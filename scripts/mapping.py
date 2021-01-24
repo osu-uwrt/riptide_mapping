@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import rospy
-import vision_msgs.Detection3DArray
+from vision_msgs.msg import Detection3DArray
+from geometry_msgs.msg import PoseWithCovarianceStamped
 
 # TODO: Define our representation. Something like this will probably work, where the six-tuple is xyzrpy
 currentPositions = {
@@ -40,17 +41,14 @@ if __name__ == '__main__':
     # TODO: Read initial positions into whatever our representation is 
 
     # TODO: Register all our subscribers and publishers 
-    # DOPE Subscribers
-    rospy.Subscriber("/dope/detected_objects", vision_msgs)
+    # Subscribers
+    rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback)
 
-    # This is left over from the copy from riptide_vision, and is just an example of what pubs/subs look like.
-    # We will need at least one subscriber to parse in DOPE's output, and at least one publisher to publish our current estimate for each object of interest. 
-    '''
-    rospy.Subscriber("command/camera", Int8, cameraSelectionCb)
-    rospy.Subscriber("darknet_ros/bounding_boxes", BoundingBoxes, bboxCb)
-    cameraPub = rospy.Publisher("darknet_ros/input_image", Image, queue_size=1)
-    bboxPub = rospy.Publisher("state/bboxes", BoundingBoxes, queue_size=1)
-    cameraSub = rospy.Subscriber("stereo/left/image_rect_color", Image, cameraCb)
-    '''
+    # Publishers
+    rospy.Publisher("mapping/gate", PoseWithCovarianceStamped, queue_size=1) # Gate task
+    rospy.Publisher("mapping/buoy", PoseWithCovarianceStamped, queue_size=1) # Buoy task 
+    rospy.Publisher("mapping/markers", PoseWithCovarianceStamped, queue_size=1) # Markers task
+    rospy.Publisher("mapping/torpedoes", PoseWithCovarianceStamped, queue_size=1) # Manipulation/torpedoes task 
+    rospy.Publisher("mapping/retrieve", PoseWithCovarianceStamped, queue_size=1) # Retrieve, surface, release task 
 
     rospy.spin()
