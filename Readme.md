@@ -3,6 +3,10 @@ This package will handle our mapping system, which takes data in from our 3D Vis
 
 I copied the repository structure over from riptide_vision, so a lot of the code in here can be deleted. Check out the commented out code in this readme for an idea of what a decent readme looks like.
 
+## TODO: 
+- Anything explicitly stated as a TODO throughout the files in this repo 
+- Update package.xml with accurate information 
+
 <!-- 
 
 # The Riptide Vision Package
