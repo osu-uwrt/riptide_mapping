@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+import vision_msgs.Detection3DArray
 
 # TODO: Define our representation. Something like this will probably work, where the six-tuple is xyzrpy
 currentPositions = {
@@ -39,6 +40,9 @@ if __name__ == '__main__':
     # TODO: Read initial positions into whatever our representation is 
 
     # TODO: Register all our subscribers and publishers 
+    # DOPE Subscribers
+    rospy.Subscriber("/dope/detected_objects", vision_msgs)
+
     # This is left over from the copy from riptide_vision, and is just an example of what pubs/subs look like.
     # We will need at least one subscriber to parse in DOPE's output, and at least one publisher to publish our current estimate for each object of interest. 
     '''
