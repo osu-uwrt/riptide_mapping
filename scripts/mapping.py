@@ -1,28 +1,27 @@
 #!/usr/bin/env python
 
 import rospy
-from std_msgs.msg import Int8
-from darknet_ros_msgs.msg import BoundingBoxes
-from sensor_msgs.msg import Image
 
-currentCam = 0
+# TODO: Define our representation. Something like this will probably work, where the six-tuple is xyzrpy
+currentPositions = {
+    "prop1": (0, 0, 0, 0, 0, 0), 
+    "prop2": (0, 0, 0, 0, 0, 0), 
+    "prop3": (0, 0, 0, 0, 0, 0), 
+    "prop4": (0, 0, 0, 0, 0, 0)
+}
 
-def cameraCb(msg):
-    cameraPub.publish(msg)
+# Handles merging DOPE's output into our representation
+def dopeCallback(msg):
 
-def cameraSelectionCb(msg):
-    global cameraSub
-    global currentCam
+    # TODO: 1. Merge the changes from DOPE into our representation
+    # TODO: 
 
-    if msg.data != currentCam:
-        rospy.loginfo("Setting camera: %d", msg.data)
-        cameraSub.unregister()
-        if msg.data == 0:
-            cameraSub = rospy.Subscriber("stereo/left/image_rect_color", Image, cameraCb)
-        else:
-            cameraSub = rospy.Subscriber("downward/image_rect_color", Image, cameraCb)
-        currentCam = msg.data
+    # TODO: Publish every object's relevant points 
 
+    # Only needed because 
+    pass
+
+# Kept as an example of what a callback that does some processing looks like, can be deleted once we get our feet under us 
 def bboxCb(msg):
     objects = {}
     for b in msg.bounding_boxes:
@@ -31,12 +30,14 @@ def bboxCb(msg):
     msg.bounding_boxes = objects.values()
     bboxPub.publish(msg)
 
-
 if __name__ == '__main__':
 
-    rospy.init_node("darknet_processor")
+    rospy.init_node("mapping")
 
-    # Set subscribers
+    # TODO: Read initial positions into whatever our representation is 
+
+    # TODO: Register all our subscribers and publishers 
+    # This is left over from the copy from riptide_vision, and is just an example of what pubs/subs look like 
     rospy.Subscriber("command/camera", Int8, cameraSelectionCb)
     rospy.Subscriber("darknet_ros/bounding_boxes", BoundingBoxes, bboxCb)
     cameraPub = rospy.Publisher("darknet_ros/input_image", Image, queue_size=1)
