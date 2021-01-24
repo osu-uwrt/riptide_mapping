@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(riptide_vision)
+project(riptide_mapping)
 #set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 add_compile_options(-std=c++11)
 
@@ -16,22 +16,13 @@ find_package(catkin REQUIRED
     roscpp
     roslint
     riptide_msgs
-    darknet_ros_msgs
     sensor_msgs
-    cv_bridge
-    image_transport
-    compressed_image_transport
-    tf2_geometry_msgs
 )
 
 catkin_package(INCLUDE_DIRS include)
-find_package(OpenCV REQUIRED) # To include, OpenCV, this MUST go BEFORE include_directories()
-include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 roslint_cpp()
 
 cmake_host_system_information(RESULT _host_name QUERY HOSTNAME)
 
-
-add_executable(hud src/hud.cpp)
 target_link_libraries(hud ${catkin_LIBRARIES})
-add_dependencies(hud ${catkin_EXPORTED_TARGETS} ${OpenCV_LIBRARIES})
+add_dependencies(hud ${catkin_EXPORTED_TARGETS})
