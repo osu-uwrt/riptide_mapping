@@ -5,6 +5,7 @@ I copied the repository structure over from riptide_vision, so a lot of the code
 
 ## TODO: 
 - Anything explicitly stated as a TODO throughout the files in this repo 
+- Implement uncertainty
 
 <!-- 
 
