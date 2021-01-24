@@ -17,12 +17,12 @@ find_package(catkin REQUIRED
     roslint
     riptide_msgs
     sensor_msgs
+    vision_msgs
 )
 
-catkin_package(INCLUDE_DIRS include)
-roslint_cpp()
+# catkin_package(INCLUDE_DIRS include)
 
-cmake_host_system_information(RESULT _host_name QUERY HOSTNAME)
+# cmake_host_system_information(RESULT _host_name QUERY HOSTNAME)
 
-target_link_libraries(hud ${catkin_LIBRARIES})
-add_dependencies(hud ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(${catkin_LIBRARIES})
+# add_dependencies(${catkin_EXPORTED_TARGETS})
