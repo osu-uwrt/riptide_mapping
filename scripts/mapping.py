@@ -22,7 +22,7 @@ def dopeCallback(msg):
     # Can be deleted once we have actual content in this function 
     pass
 
-# Kept as an example of what a callback that does some processing looks like, can be deleted once we get our feet under us 
+''' Kept as an example of what a callback that does some processing looks like, can be deleted once we get our feet under us 
 def bboxCb(msg):
     objects = {}
     for b in msg.bounding_boxes:
@@ -30,6 +30,7 @@ def bboxCb(msg):
             objects[b.Class] = b
     msg.bounding_boxes = objects.values()
     bboxPub.publish(msg)
+'''
 
 if __name__ == '__main__':
 
@@ -40,10 +41,12 @@ if __name__ == '__main__':
     # TODO: Register all our subscribers and publishers 
     # This is left over from the copy from riptide_vision, and is just an example of what pubs/subs look like.
     # We will need at least one subscriber to parse in DOPE's output, and at least one publisher to publish our current estimate for each object of interest. 
+    '''
     rospy.Subscriber("command/camera", Int8, cameraSelectionCb)
     rospy.Subscriber("darknet_ros/bounding_boxes", BoundingBoxes, bboxCb)
     cameraPub = rospy.Publisher("darknet_ros/input_image", Image, queue_size=1)
     bboxPub = rospy.Publisher("state/bboxes", BoundingBoxes, queue_size=1)
     cameraSub = rospy.Subscriber("stereo/left/image_rect_color", Image, cameraCb)
+    '''
 
     rospy.spin()
