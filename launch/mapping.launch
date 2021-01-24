@@ -1,3 +1,7 @@
+<!-- 
+  TODO: This is pulled straight from riptide_vision and is just an example. Set this up to launch our node.
+  TODO: Integrate this node into riptide_bringup
+-->
 <launch>
   
   <machine address="jetson" name="jetson" user="ros" env-loader="~/osu-uwrt/riptide_software/src/riptide_utilities/baycat_master.sh"/>
