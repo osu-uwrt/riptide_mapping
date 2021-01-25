@@ -3,44 +3,59 @@
 import rospy
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from Pose import Pose
+from Pose import CustomPose
 
-# TODO: Define our representation.
-currentPositions = {
-    "gate": Pose(), 
-    "buoy": Pose(), 
-    "markers": Pose(), 
-    "torpedoes": Pose(), 
-    "retrieve": Pose()
+# Our overall data representation; each object has related information 
+# We fill the publishers in __init__
+objects = {
+    "gate": {
+        "pose": CustomPose(),
+        "publisher": None
+    },
+    "buoy": {
+        "pose": CustomPose(),
+        "publisher": None
+    },
+    "markers": {
+        "pose": CustomPose(),
+        "publisher": None
+    },
+    "torpedoes": {
+        "pose": CustomPose(),
+        "publisher": None
+    },
+    "retrieve": {
+        "pose": CustomPose(),
+        "publisher": None
+    }
+}
+
+# DOPE will likely give us a probability map, but it will be linked via IDs instead of names. This is how we translate.
+objectIDs = {
+    "gate": 0, 
+    "buoy": 1, 
+    "markers": 2, 
+    "torpedoes": 3, 
+    "retrieve": 4
 }
 
 # Handles merging DOPE's output into our representation
-# Takes a Detection3DArray in as the message
-# Detection3DArray Docs @ http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3DArray.html
+# msg: Detection3DArray (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3DArray.html)
 def dopeCallback(msg):
 
-    # TODO: Convert DOPE's positions to world positions
-    # Iterate through Detection3DArray to get individual Detection3D objects
-    # Detection3D Docs @ http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html
-    for detectionMsg in msg:
-        bbox = detectionMsg.bbox # Type: http://docs.ros.org/en/noetic/api/vision_msgs/html/msg/BoundingBox3D.html
+    # Iterate through each object DOPE has provided us
+    for detection in msg.detections:
 
-    # TODO: Merge the changes from DOPE into our representation
-    # Will need to do a little math to figure out the best way to update it.
-    # We don't want to straight-up overwrite it every time and ignore all our previous data points, but we also know new data is more accurate so we want to use it.
+        # TODO: Resolve which object this is 
+        name = "gate"
 
-    # TODO: Publish every object's relevant points 
-    gatePub.publish()
+        # TODO: Convert DOPE's position into world position
 
-''' Kept as an example of what a callback that does some processing looks like, can be deleted once we get our feet under us 
-def bboxCb(msg):
-    objects = {}
-    for b in msg.bounding_boxes:
-        if not objects.has_key(b.Class) or b.probability > objects[b.Class].probability:
-            objects[b.Class] = b
-    msg.bounding_boxes = objects.values()
-    bboxPub.publish(msg)
-'''
+        # Merge the given position into our position for that object
+        objects[name]["pose"].addPositionEstimate(detection)
+
+        # Publish that object's data out 
+        objects[name]["publisher"].publish(objects[name]["pose"].getPoseWithCovarianceStamped)
 
 if __name__ == '__main__':
 
@@ -48,15 +63,12 @@ if __name__ == '__main__':
 
     # TODO: Read initial positions into whatever our representation is 
 
-    # TODO: Register all our subscribers and publishers 
     # Subscribers
-    rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback)
+    rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
 
     # Publishers
-    gatePub = rospy.Publisher("mapping/gate", PoseWithCovarianceStamped, queue_size=1) # Gate task
-    buoyPub = rospy.Publisher("mapping/buoy", PoseWithCovarianceStamped, queue_size=1) # Buoy task 
-    markersPub = rospy.Publisher("mapping/markers", PoseWithCovarianceStamped, queue_size=1) # Markers task
-    torpedoesPub = rospy.Publisher("mapping/torpedoes", PoseWithCovarianceStamped, queue_size=1) # Manipulation/torpedoes task 
-    retrievePub = rospy.Publisher("mapping/retrieve", PoseWithCovarianceStamped, queue_size=1) # Retrieve, surface, release task 
+    for field in objects:
+        rospy.logdebug("field: " + field)
+        objects[field].publisher = rospy.Publisher("/mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
 
     rospy.spin()
