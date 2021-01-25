@@ -5,13 +5,13 @@ from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from Pose import Pose
 
-# TODO: Define our representation. Something like this will probably work, where the six-tuple is xyzrpy
+# TODO: Define our representation.
 currentPositions = {
-    "gate": Pose, 
-    "buoy": Pose, 
-    "markers": Pose, 
-    "torpedoes": Pose, 
-    "retrieve": Pose
+    "gate": Pose(), 
+    "buoy": Pose(), 
+    "markers": Pose(), 
+    "torpedoes": Pose(), 
+    "retrieve": Pose()
 }
 
 # Handles merging DOPE's output into our representation
@@ -24,7 +24,6 @@ def dopeCallback(msg):
     # Detection3D Docs @ http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html
     for detectionMsg in msg:
         bbox = detectionMsg.bbox # Type: http://docs.ros.org/en/noetic/api/vision_msgs/html/msg/BoundingBox3D.html
-        
 
     # TODO: Merge the changes from DOPE into our representation
     # Will need to do a little math to figure out the best way to update it.
