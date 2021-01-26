@@ -80,7 +80,6 @@ if __name__ == '__main__':
 
     # Publishers
     for field in objects:
-        rospy.logdebug("field: " + field)
         objects[field].publisher = rospy.Publisher("/mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
 
     rospy.spin()

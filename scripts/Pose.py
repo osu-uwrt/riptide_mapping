@@ -7,8 +7,8 @@ import rospy
 class CustomPose:
 
     def __init__(self):
-        self.pose = None # Likely Pose Type
-        self.size = None # Likely Vector3 Type
+        self.pose = None # Pose Type
+        self.size = None # Vector3 Type
 
         # TODO: Implement Uncertainty 
         self.uncertainty = 0
@@ -18,9 +18,13 @@ class CustomPose:
     # msg: Detection3D Object (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
     def addPositionEstimate(self, msg):
 
+        # Take out the part that matters to us
+        bbox = msg.bbox # BoundingBox3D Object (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/BoundingBox3D.html)
+
         # TODO: If we don't have an estimate for this object yet, this is our new estimate!
         if (self.pose == None):
-            pass
+            self.pose = bbox.center
+            self.size = bbox.size
 
         # TODO: Otherwise, do a weighted update of our representation! Figure out how this should work. We want to give more weight to newer results, as uncertainty builds up over time.
         else:
