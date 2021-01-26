@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+import tf
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from Pose import CustomPose
@@ -55,7 +56,18 @@ def dopeCallback(msg):
         objects[name]["pose"].addPositionEstimate(detection)
 
         # Publish that object's data out 
-        objects[name]["publisher"].publish(objects[name]["pose"].getPoseWithCovarianceStamped)
+        poseStamped = objects[name]["pose"].getPoseWithCovarianceStamped()
+        objects[name]["publisher"].publish(poseStamped)
+
+        # Publish /tf data for the given object 
+        # TODO: This *should* work, but hasn't been tested; test it!
+        pose = poseStamped.pose.pose # Get the embedded geometry_msgs/Pose (we don't need timestamp/covariance)
+        translation = (pose.position.x, pose.position.y, pose.position.z) # Needs to be a 3-tuple rather than an object
+        rotation = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w) # Needs to be a 4-tuple rather than an object
+        time = rospy.get_rostime()
+        child = name + "_frame"
+        parent = "world"
+        tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
 
 if __name__ == '__main__':
 
