@@ -56,9 +56,10 @@ def dopeCallback(msg):
             resultID = result.id
             resultScore = result.score
 
+            # If this score is more confident than the last, then set its corresponding ID to the object ID
             if (resultScore > largestScore):
                 largestScore = resultScore
-                objectID = id
+                objectID = resultid
         
         name = objectIDs[objectID]
 
