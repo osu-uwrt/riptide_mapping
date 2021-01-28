@@ -32,7 +32,6 @@ objects = {
 }
 
 # DOPE will likely give us a probability map, but it will be linked via IDs instead of names. This is how we translate.
-
 # We might be able to just make this an array unless the IDs we get from dope are not sequential for some reason.
 objectIDs = {
     0 : "gate", 
@@ -49,7 +48,21 @@ def dopeCallback(msg):
     # Iterate through each object DOPE has provided us
     for detection in msg.detections:
         
-        # TODO: Resolve which object this is 
+        # Parses through the results of a detection and determines which object has been detected from an ID associated with a confidence score
+        objectID = 0
+        largestScore = 0
+
+        for result in detection.results:
+            resultID = result.id
+            resultScore = result.score
+
+            if (resultScore > largestScore):
+                largestScore = resultScore
+                objectID = id
+        
+        name = objectIDs[objectID]
+
+        # name is set to "gate" here because the code above  may not work without the proper DOPE information and object IDs
         name = "gate"
 
         # TODO: Convert DOPE's position into world position
@@ -75,7 +88,8 @@ if __name__ == '__main__':
 
     rospy.init_node("mapping")
 
-    # TODO: Read initial positions into whatever our representation is 
+    # TODO: Read initial positions into whatever our representation is
+    # pull positions from ../cfg/position.yaml
 
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
