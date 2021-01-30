@@ -89,14 +89,17 @@ if __name__ == '__main__':
 
     rospy.init_node("mapping")
 
+    
     # TODO: Read initial positions into whatever our representation is
     # pull positions from ../cfg/position.yaml
+
+    
 
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
 
     # Publishers
     for field in objects:
-        objects[field].publisher = rospy.Publisher("/mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
+        objects[field]["publisher"] = rospy.Publisher("/mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
 
     rospy.spin()
