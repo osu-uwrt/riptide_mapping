@@ -105,17 +105,16 @@ def makeInitialEstimate(object, positions):
     newPose.covariance = covariance
     newPose.size = size
 
-    # Set this objects pose to the new one we just created
+    print(newPose.size)
+    # Set this objects pose to the new one that was just created
     objects[object]['pose'] = newPose
     
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
 
-    # Initial object positions
-
-    # Load information from config fil
-    
+    # Initial object positions loaded from positions.yaml
+ 
     intial_positions_file = open(rospy.get_param('~initial_positions'))
     intial_positions = yaml.load(intial_positions_file, Loader=yaml.FullLoader)
     object_position_data = intial_positions['objects']
@@ -124,9 +123,6 @@ if __name__ == '__main__':
     for object in objects:
         makeInitialEstimate(object, object_position_data)
 
-        # TODO: Test if this loop does what its supposed to. It should, but it still needs properly tested.
-
-    
 
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
