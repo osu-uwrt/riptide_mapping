@@ -3,7 +3,6 @@
 import rospy
 import tf
 import yaml
-import os
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from Pose import CustomPose
