@@ -2,6 +2,8 @@
 
 import rospy
 import tf
+import yaml
+import os
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from Pose import CustomPose
@@ -85,13 +87,45 @@ def dopeCallback(msg):
         parent = "world"
         tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
 
+
+
+def makeInitialEstimate(object, positions):
+    
+    # Format of pose array : (x,y,z,pitch,roll,yaw)
+    pose = positions[object]['pose']
+
+    # Format of size array : (width,depth,height)
+    size = positions[object]['size']
+
+    # Float between 0 and 1
+    covariance = positions[object]['covariance']
+
+    # Instantiate new pose
+    newPose = CustomPose()
+    newPose.pose = pose
+    newPose.covariance = covariance
+    newPose.size = size
+
+    # Set this objects pose to the new one we just created
+    objects[object]['pose'] = newPose
+    
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
 
+    # Initial object positions
+
+    # Load information from config fil
     
-    # TODO: Read initial positions into whatever our representation is
-    # pull positions from ../cfg/position.yaml
+    intial_positions_file = open(rospy.get_param('~initial_positions'))
+    intial_positions = yaml.load(intial_positions_file, Loader=yaml.FullLoader)
+    object_position_data = intial_positions['objects']
+    
+    # For each of our objects, set an initial estimate of their pose
+    for object in objects:
+        makeInitialEstimate(object, object_position_data)
+
+        # TODO: Test if this loop does what its supposed to. It should, but it still needs properly tested.
 
     
 

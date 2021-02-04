@@ -3,41 +3,72 @@
 objects:
 
   gate:
-    x: 0  
-    y: 0
-    z: 0
-    roll: 0
-    pitch: 0
-    yaw: 0
+    pose:
+      - 0 # x
+      - 0 # y
+      - 0 # z
+      - 0 # pitch 
+      - 0 # roll
+      - 0 # yaw
+    size:
+      - 0 # width
+      - 0 # depth
+      - 0 # height
+    covariance: 0.0 # covariance
 
   buoy:
-    x: 0  
-    y: 0
-    z: 0
-    roll: 0
-    pitch: 0
-    yaw: 0
-  
+    pose:
+      - 0 # x
+      - 0 # y
+      - 0 # z
+      - 0 # pitch 
+      - 0 # roll
+      - 0 # yaw
+    size:
+      - 0 # width
+      - 0 # depth
+      - 0 # height
+    covariance: 0.0 # covariance
+
   markers:
-    x: 0  
-    y: 0
-    z: 0
-    roll: 0
-    pitch: 0
-    yaw: 0
+    pose:
+      - 0 # x
+      - 0 # y
+      - 0 # z
+      - 0 # pitch 
+      - 0 # roll
+      - 0 # yaw
+    size:
+      - 0 # width
+      - 0 # depth
+      - 0 # height
+    covariance: 0.0 # covariance
 
-  torpedos:
-    x: 0  
-    y: 0
-    z: 0
-    roll: 0
-    pitch: 0
-    yaw: 0
+  torpedoes:
+    pose:
+      - 0 # x
+      - 0 # y
+      - 0 # z
+      - 0 # pitch 
+      - 0 # roll
+      - 0 # yaw
+    size:
+      - 0 # width
+      - 0 # depth
+      - 0 # height
+    covariance: 0.0 # covariance
 
-  retrive:
-    x: 0  
-    y: 0
-    z: 0
-    roll: 0
-    pitch: 0
-    yaw: 0
+  retrieve:
+    pose:
+      - 0 # x
+      - 0 # y
+      - 0 # z
+      - 0 # pitch 
+      - 0 # roll
+      - 0 # yaw
+    size:
+      - 0 # width
+      - 0 # depth
+      - 0 # height
+    covariance: 0.0 # covariance
+
