@@ -8,7 +8,6 @@ class CustomPose:
 
     def __init__(self):
         self.pose = None # Pose Type
-        self.size = None # Vector3 Type
         self.covariance = None # float64[36] type 
 
     # TODO: This currently just updates it to the message. Implement something that gives more precedence to newer messages.
@@ -16,15 +15,12 @@ class CustomPose:
     # msg: Detection3D Object (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
     def addPositionEstimate(self, msg):
 
-        # TODO: If we don't have an estimate for this object yet, this is our new estimate!
-        if (self.pose == None):
-            self.pose = msg.results.pose.pose
-            self.covariance = msg.results.pose.covariance
-            self.size = msg.bbox.size
-
-        # TODO: Otherwise, do a weighted update of our representation! Figure out how this should work. We want to give more weight to newer results, as uncertainty builds up over time.
-        else:
-            pass
+        # TODO: Figure out how a weighted update should work, then implement it.
+        # The general idea is to give more weight to newer results, as uncertainty builds up over time.
+        # More weight should also be given to results where DOPE gives us a high confidence rating for it.
+        # Past that, not really sure exactly how this should work. 
+        
+        pass 
 
     # Compiles our representation into an object that we want 
     # return: PoseWithCovarianceStamped message (http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/PoseWithCovarianceStamped.html)
