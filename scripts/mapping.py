@@ -2,6 +2,7 @@
 
 import rospy
 import tf
+import yaml
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from Pose import CustomPose
@@ -80,13 +81,46 @@ def dopeCallback(msg):
             parent = "world"
             tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
 
+
+
+def makeInitialEstimate(object, positions):
+    
+    # Format of pose array : (x,y,z,yaw)
+    pose = positions[object]['pose']
+
+    # Float between 0 and 1
+    covariance = positions[object]['covariance']
+
+    # Instantiate new pose
+    newPose = CustomPose()
+    newPose.pose = pose
+    newPose.covariance = covariance
+    
+
+    # Set this objects pose to the new one that was just created
+    objects[object]['pose'] = newPose
+    
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
-    
-    # TODO: Read initial positions into whatever our representation is
-    # pull positions from ../cfg/position.yaml
+<<<<<<< HEAD
+=======
 
+    # Initial object positions loaded from positions.yaml
+ 
+    intial_positions_file = open(rospy.get_param('~initial_positions'))
+    intial_positions = yaml.load(intial_positions_file, Loader=yaml.FullLoader)
+    object_position_data = intial_positions['objects']
+>>>>>>> feature/initial_object_estimate
+    
+    # For each of our objects, set an initial estimate of their pose
+    for object in objects:
+        makeInitialEstimate(object, object_position_data)
+
+<<<<<<< HEAD
+=======
+
+>>>>>>> feature/initial_object_estimate
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
 

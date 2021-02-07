@@ -2,5 +2,8 @@
 <!-- NOTE: Change to the `mapping` branch of `riptide_bringup` so this is actually called by `simulation.launch`! -->
 <launch>
   <arg name="namespace" default="puddles" doc="Namespace of the vehicle" />
-  <node name="mapping" pkg="riptide_mapping" type="mapping.py" ns="$(arg namespace)" />
+  <node name="mapping" pkg="riptide_mapping" type="mapping.py" ns="$(arg namespace)">
+    <param name="initial_positions" type="string" value="$(find riptide_mapping)/cfg/positions.yaml" />
+  </node>
 </launch>
+
