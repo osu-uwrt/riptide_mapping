@@ -90,11 +90,8 @@ def dopeCallback(msg):
 
 def makeInitialEstimate(object, positions):
     
-    # Format of pose array : (x,y,z,pitch,roll,yaw)
+    # Format of pose array : (x,y,z,yaw)
     pose = positions[object]['pose']
-
-    # Format of size array : (width,depth,height)
-    size = positions[object]['size']
 
     # Float between 0 and 1
     covariance = positions[object]['covariance']
@@ -103,9 +100,8 @@ def makeInitialEstimate(object, positions):
     newPose = CustomPose()
     newPose.pose = pose
     newPose.covariance = covariance
-    newPose.size = size
+    
 
-    print(newPose.size)
     # Set this objects pose to the new one that was just created
     objects[object]['pose'] = newPose
     

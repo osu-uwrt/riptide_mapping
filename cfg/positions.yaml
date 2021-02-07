@@ -7,13 +7,7 @@ objects:
       - 0 # x
       - 0 # y
       - 0 # z
-      - 0 # pitch 
-      - 0 # roll
       - 0 # yaw
-    size:
-      - 0 # width
-      - 0 # depth
-      - 0 # height
     covariance: 0.0 # covariance
 
   buoy:
@@ -21,13 +15,7 @@ objects:
       - 0 # x
       - 0 # y
       - 0 # z
-      - 0 # pitch 
-      - 0 # roll
       - 0 # yaw
-    size:
-      - 0 # width
-      - 0 # depth
-      - 0 # height
     covariance: 0.0 # covariance
 
   markers:
@@ -35,13 +23,7 @@ objects:
       - 0 # x
       - 0 # y
       - 0 # z
-      - 0 # pitch 
-      - 0 # roll
       - 0 # yaw
-    size:
-      - 0 # width
-      - 0 # depth
-      - 0 # height
     covariance: 0.0 # covariance
 
   torpedoes:
@@ -49,13 +31,7 @@ objects:
       - 0 # x
       - 0 # y
       - 0 # z
-      - 0 # pitch 
-      - 0 # roll
       - 0 # yaw
-    size:
-      - 0 # width
-      - 0 # depth
-      - 0 # height
     covariance: 0.0 # covariance
 
   retrieve:
@@ -63,12 +39,5 @@ objects:
       - 0 # x
       - 0 # y
       - 0 # z
-      - 0 # pitch 
-      - 0 # roll
       - 0 # yaw
-    size:
-      - 0 # width
-      - 0 # depth
-      - 0 # height
     covariance: 0.0 # covariance
-
