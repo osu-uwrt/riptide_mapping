@@ -32,12 +32,13 @@ objects = {
 }
 
 # DOPE will likely give us a probability map, but it will be linked via IDs instead of names. This is how we translate.
+# We might be able to just make this an array unless the IDs we get from dope are not sequential for some reason.
 objectIDs = {
-    "gate": 0, 
-    "buoy": 1, 
-    "markers": 2, 
-    "torpedoes": 3, 
-    "retrieve": 4
+    0 : "gate", 
+    1 : "buoy", 
+    2 : "markers", 
+    3 : "torpedoes", 
+    4 : "retrieve"
 }
 
 # Handles merging DOPE's output into our representation
@@ -46,8 +47,23 @@ def dopeCallback(msg):
 
     # Iterate through each object DOPE has provided us
     for detection in msg.detections:
+        
+        # Parses through the results of a detection and determines which object has been detected from an ID associated with a confidence score
+        objectID = 0
+        largestScore = 0
 
-        # TODO: Resolve which object this is 
+        for result in detection.results:
+            resultID = result.id
+            resultScore = result.score
+
+            # If this score is more confident than the last, then set its corresponding ID to the object ID
+            if (resultScore > largestScore):
+                largestScore = resultScore
+                objectID = resultid
+        
+        name = objectIDs[objectID]
+
+        # name is set to "gate" here because the code above  may not work without the proper DOPE information and object IDs
         name = "gate"
 
         # TODO: Convert DOPE's position into world position
@@ -73,13 +89,17 @@ if __name__ == '__main__':
 
     rospy.init_node("mapping")
 
-    # TODO: Read initial positions into whatever our representation is 
+    
+    # TODO: Read initial positions into whatever our representation is
+    # pull positions from ../cfg/position.yaml
+
+    
 
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
 
     # Publishers
     for field in objects:
-        objects[field].publisher = rospy.Publisher("/mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
+        objects[field]["publisher"] = rospy.Publisher("/mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
 
     rospy.spin()
