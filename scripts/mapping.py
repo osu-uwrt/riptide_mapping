@@ -103,24 +103,17 @@ def makeInitialEstimate(object, positions):
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
-<<<<<<< HEAD
-=======
 
     # Initial object positions loaded from positions.yaml
  
     intial_positions_file = open(rospy.get_param('~initial_positions'))
     intial_positions = yaml.load(intial_positions_file, Loader=yaml.FullLoader)
     object_position_data = intial_positions['objects']
->>>>>>> feature/initial_object_estimate
     
     # For each of our objects, set an initial estimate of their pose
     for object in objects:
         makeInitialEstimate(object, object_position_data)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> feature/initial_object_estimate
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
 
