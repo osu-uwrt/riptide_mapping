@@ -8,7 +8,11 @@ objects:
       - 0 # y
       - 0 # z
       - 0 # yaw
-    covariance: 0.0 # covariance
+    covariance: 
+      - 0.0 # x covariance
+      - 0.0 # y covariance
+      - 0.0 # z covariance
+      - 0.0 # yaw covariance
 
   buoy:
     pose:
@@ -16,7 +20,11 @@ objects:
       - 0 # y
       - 0 # z
       - 0 # yaw
-    covariance: 0.0 # covariance
+    covariance: 
+      - 0.0 # x covariance
+      - 0.0 # y covariance
+      - 0.0 # z covariance
+      - 0.0 # yaw covariance
 
   markers:
     pose:
@@ -24,7 +32,11 @@ objects:
       - 0 # y
       - 0 # z
       - 0 # yaw
-    covariance: 0.0 # covariance
+    covariance: 
+      - 0.0 # x covariance
+      - 0.0 # y covariance
+      - 0.0 # z covariance
+      - 0.0 # yaw covariance
 
   torpedoes:
     pose:
@@ -32,7 +44,11 @@ objects:
       - 0 # y
       - 0 # z
       - 0 # yaw
-    covariance: 0.0 # covariance
+    covariance: 
+      - 0.0 # x covariance
+      - 0.0 # y covariance
+      - 0.0 # z covariance
+      - 0.0 # yaw covariance
 
   retrieve:
     pose:
@@ -40,4 +56,8 @@ objects:
       - 0 # y
       - 0 # z
       - 0 # yaw
-    covariance: 0.0 # covariance
+    covariance: 
+      - 0.0 # x covariance
+      - 0.0 # y covariance
+      - 0.0 # z covariance
+      - 0.0 # yaw covariance
