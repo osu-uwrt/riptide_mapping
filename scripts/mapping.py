@@ -5,6 +5,7 @@ import tf
 import yaml
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import Pose
 from Pose import CustomPose
 
 # Our overall data representation; each object has related information 
@@ -60,7 +61,7 @@ def dopeCallback(msg):
             # If this score is more confident than the last, then set its corresponding ID to the object ID
             if (resultScore > largestScore):
                 largestScore = resultScore
-                objectID = resultid
+                objectID = resultID
         
         name = objectIDs[objectID]
 
@@ -87,39 +88,50 @@ def dopeCallback(msg):
         tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
 
 
-
-def makeInitialEstimate(object, positions):
+# Takes in an object and position data to produce an initial pose estimate 
+# and associated covariance for the given object
+# 
+# param: object - object to get estimate of
+# param: positions - parsed yaml object (ie yaml.load) of position data
+# returns: newPose - CustomPose object created from the initial data
+def initialObjectPose(object, positions):
     
-    # Format of pose array : (x,y,z,yaw)
-    pose = positions[object]['pose']
+    # Load object data from positions
+    objectData = positions['objects']
 
-    # Float between 0 and 1
-    covariance = positions[object]['covariance']
-
-    # Instantiate new pose
+    objectPosition = objectData[object]['pose']['position']
+    objectOrientation = objectData[object]['pose']['orientation']
+    
+    # Instantiate a Pose object to store pose information
+    objectPose = Pose()
+    objectPose.position = objectPosition
+    objectPose.orientation = objectOrientation
+   
+    # 6x6 covariance matrix
+    objectCovariance = objectData[object]['covariance']
+    
+    # Instantiate a CustomPose object to store pose and covariance information
     newPose = CustomPose()
-    newPose.pose = pose
-    newPose.covariance = covariance
-    
+    newPose.pose = objectPose
+    newPose.covariance = objectCovariance
 
-    # Set this objects pose to the new one that was just created
-    objects[object]['pose'] = newPose
+    return newPose
     
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
 
     # Initial object positions loaded from positions.yaml
- 
-    intial_positions_file = open(rospy.get_param('~initial_positions'))
-    intial_positions = yaml.load(intial_positions_file, Loader=yaml.FullLoader)
-    object_position_data = intial_positions['objects']
+
+    initial_positions_file = open(rospy.get_param("/puddles/mapping/initial_positions"))
+    initial_positions = yaml.load(initial_positions_file, Loader=yaml.FullLoader)
     
     # For each of our objects, set an initial estimate of their pose
     for object in objects:
-        makeInitialEstimate(object, object_position_data)
-
-
+        newPose = initialObjectPose(object, initial_positions)
+        # Set this objects pose to the new one that was just created
+        objects[object]['pose'] = newPose
+         
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
 
