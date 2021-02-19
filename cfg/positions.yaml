@@ -3,61 +3,81 @@
 objects:
 
   gate:
-    pose:
-      - 0 # x
-      - 0 # y
-      - 0 # z
-      - 0 # yaw
-    covariance: 
-      - 0.0 # x covariance
-      - 0.0 # y covariance
-      - 0.0 # z covariance
-      - 0.0 # yaw covariance
+    pose: 
+      # point position (x,y,z)
+      position: [0.0,0.0,0.0]
+      
+      # Quaternion orientation (w,x,y,z)
+      orientation: [0.0,0.0,0.0,0.0]
+
+    # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
+    covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.1,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.1,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.1]
 
   buoy:
-    pose:
-      - 0 # x
-      - 0 # y
-      - 0 # z
-      - 0 # yaw
-    covariance: 
-      - 0.0 # x covariance
-      - 0.0 # y covariance
-      - 0.0 # z covariance
-      - 0.0 # yaw covariance
+    pose: 
+      # point position (x,y,z)
+      position: [0.0,0.0,0.0]
+      
+      # Quaternion orientation (w,x,y,z)
+      orientation: [0.0,0.0,0.0,0.0]
+
+    # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
+    covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.1,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.1,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.1]
 
   markers:
-    pose:
-      - 0 # x
-      - 0 # y
-      - 0 # z
-      - 0 # yaw
-    covariance: 
-      - 0.0 # x covariance
-      - 0.0 # y covariance
-      - 0.0 # z covariance
-      - 0.0 # yaw covariance
+    pose: 
+      # point position (x,y,z)
+      position: [0.0,0.0,0.0]
+      
+      # Quaternion orientation (w,x,y,z)
+      orientation: [0.0,0.0,0.0,0.0]
+
+    # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
+    covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.1,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.1,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.1]
 
   torpedoes:
-    pose:
-      - 0 # x
-      - 0 # y
-      - 0 # z
-      - 0 # yaw
-    covariance: 
-      - 0.0 # x covariance
-      - 0.0 # y covariance
-      - 0.0 # z covariance
-      - 0.0 # yaw covariance
+    pose: 
+      # point position (x,y,z)
+      position: [0.0,0.0,0.0]
+      
+      # Quaternion orientation (w,x,y,z)
+      orientation: [0.0,0.0,0.0,0.0]
+
+    # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
+    covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.1,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.1,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.1]
 
   retrieve:
-    pose:
-      - 0 # x
-      - 0 # y
-      - 0 # z
-      - 0 # yaw
-    covariance: 
-      - 0.0 # x covariance
-      - 0.0 # y covariance
-      - 0.0 # z covariance
-      - 0.0 # yaw covariance
+    pose: 
+      # point position (x,y,z)
+      position: [0.0,0.0,0.0]
+      
+      # Quaternion orientation (w,x,y,z)
+      orientation: [0.0,0.0,0.0,0.0]
+
+    # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
+    covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.1,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.1,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.0,
+                 0.0,0.0,0.0,0.0,0.0,0.1]
