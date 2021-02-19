@@ -47,45 +47,41 @@ objectIDs = {
 # msg: Detection3DArray (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3DArray.html)
 def dopeCallback(msg):
 
-    # Iterate through each object DOPE has provided us
+    # Context: This loop will run <number of different objects DOPE thinks it sees on screen> times
+    # `detection` is of type Detection3D (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
     for detection in msg.detections:
-        
-        # Parses through the results of a detection and determines which object has been detected from an ID associated with a confidence score
-        objectID = 0
-        largestScore = 0
 
-        for result in detection.results:
-            resultID = result.id
-            resultScore = result.score
+        # Note that we don't change the first loop to `detection in msg.detections.results` because we want the timestamp from the Detection3D object
+        # Context: This loop will run <number of objects DOPE can identify> times 
+        # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
+        for result in detection.results: 
 
-            # If this score is more confident than the last, then set its corresponding ID to the object ID
-            if (resultScore > largestScore):
-                largestScore = resultScore
-                objectID = resultID
-        
-        name = objectIDs[objectID]
 
-        # name is set to "gate" here because the code above  may not work without the proper DOPE information and object IDs
-        name = "gate"
+            # NOTE: Rather than decide here if it meets our threshold for adding an estimate, the cleaner way to do it is
+            # to just pass it over regardless. addPositionEstimate will simply barely change our estimate if our certainty is low.
 
-        # TODO: Convert DOPE's position into world position
+            # Translate the ID that DOPE gives us to a name meaningful to us
+            name = objectIDs[result.id]
 
-        # Merge the given position into our position for that object
-        objects[name]["pose"].addPositionEstimate(detection)
+            # TODO: Convert DOPE's output into a PoseWithCovariancestamped object with positions in the *world frame*.
+            # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
+            convertedPos = 0
 
-        # Publish that object's data out 
-        poseStamped = objects[name]["pose"].getPoseWithCovarianceStamped()
-        objects[name]["publisher"].publish(poseStamped)
+            # Merge the given position into our position for that object
+            objects[name]["pose"].addPositionEstimate(convertedPos)
 
-        # Publish /tf data for the given object 
-        # TODO: This *should* work, but hasn't been tested; test it!
-        pose = poseStamped.pose.pose # Get the embedded geometry_msgs/Pose (we don't need timestamp/covariance)
-        translation = (pose.position.x, pose.position.y, pose.position.z) # Needs to be a 3-tuple rather than an object
-        rotation = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w) # Needs to be a 4-tuple rather than an object
-        time = rospy.get_rostime()
-        child = name + "_frame"
-        parent = "world"
-        tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
+            # Publish that object's data out 
+            poseStamped = objects[name]["pose"].getPoseWithCovarianceStamped()
+            objects[name]["publisher"].publish(poseStamped)
+
+            # Publish /tf data for the given object 
+            pose = poseStamped.pose.pose # Get the embedded geometry_msgs/Pose (we don't need timestamp/covariance)
+            translation = (pose.position.x, pose.position.y, pose.position.z) # Needs to be a 3-tuple rather than an object
+            rotation = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w) # Needs to be a 4-tuple rather than an object
+            time = rospy.get_rostime()
+            child = name + "_frame"
+            parent = "world"
+            tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
 
 
 # Takes in an object and position data to produce an initial pose estimate 
@@ -132,6 +128,7 @@ if __name__ == '__main__':
         # Set this objects pose to the new one that was just created
         objects[object]['pose'] = newPose
          
+
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
 
