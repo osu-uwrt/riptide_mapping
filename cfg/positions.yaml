@@ -8,7 +8,7 @@ objects:
       position: [0.0,0.0,0.0]
       
       # Quaternion orientation (w,x,y,z)
-      orientation: [0.0,0.0,0.0,0.0]
+      orientation: [1.0,0.0,0.0,0.0]
 
     # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
     covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
@@ -24,7 +24,7 @@ objects:
       position: [0.0,0.0,0.0]
       
       # Quaternion orientation (w,x,y,z)
-      orientation: [0.0,0.0,0.0,0.0]
+      orientation: [1.0,0.0,0.0,0.0]
 
     # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
     covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
@@ -40,7 +40,7 @@ objects:
       position: [0.0,0.0,0.0]
       
       # Quaternion orientation (w,x,y,z)
-      orientation: [0.0,0.0,0.0,0.0]
+      orientation: [1.0,0.0,0.0,0.0]
 
     # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
     covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
@@ -56,7 +56,7 @@ objects:
       position: [0.0,0.0,0.0]
       
       # Quaternion orientation (w,x,y,z)
-      orientation: [0.0,0.0,0.0,0.0]
+      orientation: [1.0,0.0,0.0,0.0]
 
     # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
     covariance: [0.1,0.0,0.0,0.0,0.0,0.0,
@@ -72,7 +72,7 @@ objects:
       position: [0.0,0.0,0.0]
       
       # Quaternion orientation (w,x,y,z)
-      orientation: [0.0,0.0,0.0,0.0]
+      orientation: [1.0,0.0,0.0,0.0]
 
     # 6x6 Covariance Matrix (x,y,z,xRot,yRot,zRot)
     covariance: [0.1,0.0,0.0,0.0,0.0,0.0,

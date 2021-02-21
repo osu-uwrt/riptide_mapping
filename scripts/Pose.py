@@ -1,6 +1,7 @@
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Vector3
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import rospy 
 
 # Custom pose class that has commonly used mapping functionality 
@@ -37,43 +38,45 @@ class CustomPose:
         I personally think we should do the second, then move to the first if it proves too unreliable, but I'm open to changing it.
         They can both give more precedence to newer results, and can both account for how sure DOPE itself is, so both are probably decent.
     '''
-
     
     # Calculates a weighted average between the current value and a value from a message.
-    # Weight is calculated from covariance
+    # Weight is calculated from covariance. Also calculates a new covariance value.
     # param: currVal - current value stored in this object
     # param: msgVal - value received from a ROS message
     # param: currCovarianceVal - current covariance for this value
     # param: msgCovarianceVal - covariance of the value from the message
     # returns: newVal - new value calculated from the paramters above
+    # returns: newCov - new covariance value 
     def compareValues (self, currVal, msgVal, currCovarianceVal, msgCovarianceVal):
 
         # Make weight values from covariance values
-
         currWeight = currCovarianceVal * 100
         msgWeight = msgCovarianceVal * 100
 
         newVal = ((currVal * currWeight) + (msgVal * msgWeight)) / (currWeight + msgWeight)
-        
-        return newVal
+
+        # Calculate a new covariance value
+        newCov = (currCovarianceVal + msgCovarianceVal)/2
+
+        return newVal, newCov
 
     # Takes in a new DOPE reading and updates our estimate
     # msg: PoseWithCovarianceStamped Object (http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/PoseWithCovariance.html)
     def addPositionEstimate(self, msg):
+        # Get the current pose and covariance and store it
         currPose = Pose() 
         currPose = self.pose
+        currCovariance = self.covariance
+
+        # Get the message pose and covariance store it
         msgPose = Pose()
         msgPose = msg.pose
-
-        currCovariance = self.covariance
         msgCovariance = msg.covariance
 
+        # New pose and covariance to store everything
         newPose = Pose()
         newCovariance = []
-
-        # TODO Compare these values and create a new pose and covariance for this object
-        # Get the current position and orientation
-
+ 
         positionKeys = ["x","y","z"]
 
         positionCovarianceIndeces = {
@@ -82,16 +85,7 @@ class CustomPose:
             "z" : 14
         }
 
-        orientationKeys = ["w","x","y","z"]
-
-        # TODO: figure out a way to translate quaternion to eular
-        orientationCovarianceIndeces = {
-            
-            "x" : 0,
-            "y" : 0,
-            "z" : 0,
-        }
-
+        # For every key, calculate and set a new position value for the new pose
         for key in positionKeys:
             # Covariance index for this key
             covarianceIndex = positionCovarianceIndeces[key]
@@ -104,22 +98,66 @@ class CustomPose:
             msgVal = getattr(msgPose.position, key)
             msgCovarianceVal = msgCovariance[covarianceIndex]
              
-            # Calculate a new value from these two
-            newVal = self.compareValues(currVal,msgVal,currCovarianceVal,msgCovarianceVal)
+            # Calculate a new value and covariance from these two
+            newVal, newCov = self.compareValues(currVal,msgVal,currCovarianceVal,msgCovarianceVal)
             
-            # Set this value for the corresponding value in newPose
+            # Set these values to the corresponding values in newPose and newCovariance
             setattr(newPose.position, key, newVal)
-
-
-        # TODO: Do the same thing as above for the orientation, we are also probably going to have to convert the covariance data for orientation
-        # into quaterion information.
-
-        for key in orientationKeys:
-            pass
-            # Covariance index for this key
-
-      
+            newCovariance[covarianceIndex] = newCov
+            
         
+        orientationCovarianceIndeces = {
+            "Roll" : 21,
+            "Pitch" : 28,
+            "Yaw" : 35,
+        }
+
+        currOrientation = currPose.orientation
+        currQuaternion = [currOrientation.w, currOrientation.x, currOrientation.y, currOrientation.z]
+        # Convert the current oriention to euler from quaternion
+        (currRoll, currPitch, currYaw) = euler_from_quaternion(currQuaternion)
+
+        msgOrientation = msgPose.orientation
+        msgQuaternion = [msgOrientation.w, msgOrientation.x, msgOrientation.y, msgOrientation.z]
+        # Convert the message's oriention to euler from quaternion
+        (msgRoll, msgPitch, msgYaw) = euler_from_quaternion(msgQuaternion)
+
+        # Compare the Euler values
+        # Roll
+        covIndex = orientationCovarianceIndeces["Roll"]
+        currRollCov = currCovariance[covIndex]
+        msgRollCov = msgCovariance[covIndex]
+        newRoll, newRollCov = self.compareValues(currRoll, msgRoll, currRollCov, msgRollCov)
+        # Set new covariance value
+        newCovariance[covIndex] = newRollCov
+
+        # Pitch 
+        covIndex = orientationCovarianceIndeces["Pitch"]
+        currPitchCov = currCovariance[covIndex]
+        msgPitchCov = currCovariance[covIndex]
+        newPitch, newPitchCov = self.compareValues(currPitch, msgPitch, currPitchCov, msgPitchCov)
+        # Set new covariance Value
+        newCovariance[covIndex] = newPitchCov
+        
+        # Yaw
+        covIndex = orientationCovarianceIndeces["Yaw"]
+        currYawCov = currCovariance[covIndex]
+        msgYawCov = msgCovariance[covIndex]
+        newYaw, newYawCov = self.compareValues(currYaw, msgYaw, currYawCov, msgYawCov)
+        # Set new covariance Value
+        newCovariance[covIndex] = newYawCov
+
+        # Convert to quaternion and set new orientation values
+
+        (newQuatW, newQuatX, newQuatY, newQuatZ) = quaternion_from_euler(newRoll, newPitch, newYaw)
+
+        newPose.orientation.w = newQuatW
+        newPose.orientation.x = newQuatX
+        newPose.orientation.y = newQuatY
+        newPose.orientation.z = newQuatZ
+
+        # Set the new pose and covariance as our new current values
+
         self.pose = newPose
         self.covariance = newCovariance
         
