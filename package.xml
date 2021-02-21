@@ -8,10 +8,10 @@
 
   <license>BSD</license>
 
-  <url type="website">http://uwrt.club</url>
+  <url type="website">https://uwrt.club</url>
   <url type="repository">http://github.com/osu-uwrt/riptide_mapping</url>
 
-  <author email="justice.251@osu.edu">Benji Justice</author>
+  <author email="justice.251@osu.edu">Anden Acitelli</author>
 
   <buildtool_depend>catkin</buildtool_depend>
 

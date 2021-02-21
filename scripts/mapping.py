@@ -4,8 +4,9 @@ import rospy
 import tf
 import yaml
 from vision_msgs.msg import Detection3DArray
-from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from Pose import CustomPose
 
 # Our overall data representation; each object has related information 
@@ -43,6 +44,8 @@ objectIDs = {
     4 : "retrieve"
 }
 
+tl = tf.TransformListener()
+
 # Handles merging DOPE's output into our representation
 # msg: Detection3DArray (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3DArray.html)
 def dopeCallback(msg):
@@ -63,9 +66,26 @@ def dopeCallback(msg):
             # Translate the ID that DOPE gives us to a name meaningful to us
             name = objectIDs[result.id]
 
-            # TODO: Convert DOPE's output into a PoseWithCovariancestamped object with positions in the *world frame*.
             # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
-            convertedPos = 0
+            # We need to convert that to the world frame, which is what is used in our mapping system 
+            # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
+            worldFrame = "/world"
+            cameraFrame = "/{}/stereo/left_link".format(rospy.get_namespace())
+            convertedPos = None
+            if tf.frameExists(worldFrame) and tf.frameExists(cameraFrame):
+                t = tl.getLatestCommonTime(worldFrame, cameraFrame)
+                p1 = PoseStamped()
+                p1.header.frame_id = cameraFrame
+                p1.header.stamp = t
+                p1.pose = result.pose.pose
+                convertedPos = tl.transformPose(worldFrame, p1)
+            else:
+                rospy.logfatal("ERROR: Mapping was unable to find /world and /{}/stereo/left_link frames!".format(rospy.get_namespace()))
+
+            # poseMsg = PoseStamped()
+            # poseMsg.header = detection.header # tf transforms need a PoseStamped, not a PoseWithCovarianceStamped like we have
+            # poseMsg.pose = result.pose.pose
+            # convertedPos = tl.transformPose("world", pose)
 
             # Merge the given position into our position for that object
             objects[name]["pose"].addPositionEstimate(convertedPos)
