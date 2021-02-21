@@ -100,9 +100,18 @@ def initialObjectPose(object, positions):
     
     # Instantiate a Pose object to store pose information
     objectPose = Pose()
-    objectPose.position = objectPosition
-    objectPose.orientation = objectOrientation
-   
+
+    # Position data
+    objectPose.position.x = objectPosition[0]
+    objectPose.position.y = objectPosition[1]
+    objectPose.position.z = objectPosition[2]
+
+    # Orientation data
+    objectPose.orientation.w = objectOrientation[0]
+    objectPose.orientation.x = objectOrientation[1]
+    objectPose.orientation.y = objectOrientation[2]
+    objectPose.orientation.z = objectOrientation[3]
+
     # 6x6 covariance matrix
     objectCovariance = objectData[object]['covariance']
     
@@ -127,8 +136,8 @@ if __name__ == '__main__':
         newPose = initialObjectPose(object, initial_positions)
         # Set this objects pose to the new one that was just created
         objects[object]['pose'] = newPose
-         
 
+        
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
 
