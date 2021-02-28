@@ -44,8 +44,6 @@ objectIDs = {
     4 : "retrieve"
 }
 
-tl = tf.TransformListener()
-
 # Handles merging DOPE's output into our representation
 # msg: Detection3DArray (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3DArray.html)
 def dopeCallback(msg):
@@ -81,6 +79,7 @@ def dopeCallback(msg):
                 convertedPos = tl.transformPose(worldFrame, p1)
             else:
                 rospy.logfatal("ERROR: Mapping was unable to find /world and /{}/stereo/left_link frames!".format(rospy.get_namespace()))
+
 
             # poseMsg = PoseStamped()
             # poseMsg.header = detection.header # tf transforms need a PoseStamped, not a PoseWithCovarianceStamped like we have
@@ -145,6 +144,8 @@ def initialObjectPose(object, positions):
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
+
+    tl = tf.TransformListener()
 
     # Initial object positions loaded from positions.yaml
 

@@ -124,20 +124,16 @@ class CustomPose:
 
         # Compare the Euler values
         # Roll
-        covIndex = orientationCovarianceIndeces["Roll"]
-        currRollCov = currCovariance[covIndex]
-        msgRollCov = msgCovariance[covIndex]
-        newRoll, newRollCov = self.compareValues(currRoll, msgRoll, currRollCov, msgRollCov)
+        # Roll information is irrelevant and is therefore set to 0
+        newRoll = 0
         # Set new covariance value
-        newCovariance[covIndex] = newRollCov
+        newCovariance[covIndex] = 0
 
         # Pitch 
-        covIndex = orientationCovarianceIndeces["Pitch"]
-        currPitchCov = currCovariance[covIndex]
-        msgPitchCov = currCovariance[covIndex]
-        newPitch, newPitchCov = self.compareValues(currPitch, msgPitch, currPitchCov, msgPitchCov)
+        # Pitch information is irrelevant and is therefore set to 0
+        newPitch = 0
         # Set new covariance Value
-        newCovariance[covIndex] = newPitchCov
+        newCovariance[covIndex] = 0
         
         # Yaw
         covIndex = orientationCovarianceIndeces["Yaw"]
