@@ -3,6 +3,7 @@
 import rospy
 import tf
 import yaml
+import numpy
 from vision_msgs.msg import Detection3DArray
 from vision_msgs.msg import Detection3D
 from geometry_msgs.msg import Pose
@@ -56,9 +57,10 @@ def poleCallback(msg):
 
     # Verify TF system is established
     try:
-        tl.lookupTransform(worldFrame, cameraFrame, rospy.Time(0))
+        (trans, rot) = tl.lookupTransform(worldFrame, cameraFrame, rospy.Time(0))
     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
         return 
+    print("rot: " + str(rot))
 
     # Note that we don't change the first loop to `detection in msg.detections.results` because we want the timestamp from the Detection3D object
     # Context: This loop will run <number of objects DOPE can identify> times 
@@ -74,6 +76,7 @@ def poleCallback(msg):
         # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
         # We need to convert that to the world frame, which is what is used in our mapping system 
         # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
+        # Transform the pose part 
         t = tl.getLatestCommonTime(worldFrame, cameraFrame)
         p1 = PoseStamped()
         p1.header.frame_id = cameraFrame
@@ -81,7 +84,25 @@ def poleCallback(msg):
         p1.pose = result.pose.pose
         convertedPos = tl.transformPose(worldFrame, p1)
 
+        p1Stamped = PoseWithCovarianceStamped()
+        p1Stamped.header = p1.header 
+        p1Stamped.pose.pose = convertedPos.pose
+
         # BUG: We transform a PoseStamped perfectly fine, but there's no easy way to transform the covariance, which is what gets actually fed into our system 
+        # To do that you just need to make a rotation matrix and then apply it to your covariance matrix
+        # Applying a rotation to a matrix is R * COV * RT where the T is transpose
+        rospy.loginfo_throttle(.5, "Before: {}".format(str(result.pose.covariance)))
+        rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
+        print("rotation_matrix: " + str(rotation_matrix))
+        cov = numpy.array([ result.pose.covariance[0:3], result.pose.covariance[6:9], result.pose.covariance[12:15] ])
+        print("cov: " + str(cov))
+        rotated_result = numpy.dot(rotation_matrix, numpy.dot(cov, rotation_matrix.T))
+        print("rotated_result: " + str(rotated_result))
+        p1Stamped.pose.covariance[0:3] = rotated_result[0, 0:3] # Translation gets rotated
+        p1Stamped.pose.covariance[6:9] = rotated_result[1, 0:3]
+        p1Stamped.pose.covariance[12:15] = rotated_result[2, 0:3]
+        p1Stamped.pose.covariance[5:6] = result.pose.covariance[5:6] # Rotation doesn't get rotated
+        rospy.loginfo_throttle(.5, "After: {}".format(str(p1Stamped.pose.covariance)))
 
         # poseMsg = PoseStamped()
         # poseMsg.header = detection.header # tf transforms need a PoseStamped, not a PoseWithCovarianceStamped like we have
@@ -89,7 +110,7 @@ def poleCallback(msg):
         # convertedPos = tl.transformPose("world", pose)
 
         # Merge the given position into our position for that object
-        objects[name]["pose"].addPositionEstimate(convertedPos)
+        objects[name]["pose"].addPositionEstimate(p1Stamped)
 
         # Publish that object's data out 
         poseStamped = objects[name]["pose"].getPoseWithCovarianceStamped()

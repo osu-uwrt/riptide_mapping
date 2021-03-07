@@ -63,15 +63,14 @@ class CustomPose:
     # Takes in a new DOPE reading and updates our estimate
     # msg: PoseWithCovarianceStamped Object (http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/PoseWithCovariance.html)
     def addPositionEstimate(self, msg):
+        
         # Get the current pose and covariance and store it
-        currPose = Pose() 
         currPose = self.pose
         currCovariance = self.covariance
 
         # Get the message pose and covariance store it
-        msgPose = Pose()
-        msgPose = msg.pose
-        msgCovariance = msg.covariance
+        msgPose = msg.pose.pose
+        msgCovariance = msg.pose.covariance
 
         # New pose and covariance to store everything
         newPose = Pose()
