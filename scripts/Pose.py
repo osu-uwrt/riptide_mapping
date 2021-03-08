@@ -42,8 +42,8 @@ class CustomPose:
     def isValidMeasurement(self, msg):
 
         # Reject anything that isn't realistically inside transdec
-        if msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or
-            msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or
+        if msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or \
+            msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or \
             msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500:
             return False
 

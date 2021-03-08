@@ -81,7 +81,7 @@ def poleCallback(msg):
         p1 = PoseStamped()
         p1.header.frame_id = cameraFrame
         p1.header.stamp = t
-        p1.pose = result.pose.pose
+        p1.pose = result.pose.poseMsg
         convertedPos = tl.transformPose(worldFrame, p1)
 
         p1Stamped = PoseWithCovarianceStamped()
