@@ -93,16 +93,12 @@ def poleCallback(msg):
         # Applying a rotation to a matrix is R * COV * RT where the T is transpose
         rospy.loginfo_throttle(.5, "Before: {}".format(str(result.pose.covariance)))
         rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
-        print("rotation_matrix: " + str(rotation_matrix))
         cov = numpy.array([ result.pose.covariance[0:3], result.pose.covariance[6:9], result.pose.covariance[12:15] ])
-        print("cov: " + str(cov))
         rotated_result = numpy.dot(rotation_matrix, numpy.dot(cov, rotation_matrix.T))
-        print("rotated_result: " + str(rotated_result))
         p1Stamped.pose.covariance[0:3] = rotated_result[0, 0:3] # Translation gets rotated
         p1Stamped.pose.covariance[6:9] = rotated_result[1, 0:3]
         p1Stamped.pose.covariance[12:15] = rotated_result[2, 0:3]
         p1Stamped.pose.covariance[5:6] = result.pose.covariance[5:6] # Rotation doesn't get rotated
-        rospy.loginfo_throttle(.5, "After: {}".format(str(p1Stamped.pose.covariance)))
 
         # poseMsg = PoseStamped()
         # poseMsg.header = detection.header # tf transforms need a PoseStamped, not a PoseWithCovarianceStamped like we have

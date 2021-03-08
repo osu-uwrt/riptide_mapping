@@ -2,6 +2,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Vector3
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
+from operator import add, div
 import rospy 
 import numpy 
 
@@ -24,13 +25,14 @@ class CustomPose:
     def compareValues (self, currVal, msgVal, currCovarianceVal, msgCovarianceVal):
 
         # Make weight values from covariance values
-        currWeight = currCovarianceVal * 100
-        msgWeight = msgCovarianceVal * 100
+        currWeight = 100 - max(currCovarianceVal) * 100
+        msgWeight = 100 - max(msgCovarianceVal) * 100
 
         newVal = ((currVal * currWeight) + (msgVal * msgWeight)) / (currWeight + msgWeight)
 
-        # Calculate a new covariance value
-        newCov = (currCovarianceVal + msgCovarianceVal)/2
+        # Calculate a new covariance value by essentially averaging both arrays 
+        newCov = list(map(add, currCovarianceVal, msgCovarianceVal))
+        newCov = [x / 2 for x in newCov]
 
         return newVal, newCov
 
@@ -54,6 +56,12 @@ class CustomPose:
         msgPose = msg.pose.pose
         msgCovariance = msg.pose.covariance
 
+        print("addPositionEstimate()")
+        print("Current Pose: {}".format(self.pose))
+        print("Current Covariance: {}".format(self.covariance))
+        print("Message Pose: {}".format(msgPose))
+        print("Message Covariance: {}".format(msgCovariance))
+
         # Update translational poses/covariances
         self.pose.position.x, self.covariance[0:6] = self.compareValues(self.pose.position.x, msgPose.position.x, self.covariance[0:6], msgCovariance[0:6]) # x
         self.pose.position.y, self.covariance[6:12] = self.compareValues(self.pose.position.y, msgPose.position.y, self.covariance[6:12], msgCovariance[6:12]) # y
@@ -65,6 +73,9 @@ class CustomPose:
         _, _, msgYaw = euler_from_quaternion([msgPose.orientation.w, msgPose.orientation.x, msgPose.orientation.y, msgPose.orientation.z])
         newYaw, self.covariance[30:36] = self.compareValues(currYaw, msgYaw, self.covariance[30:36], msgCovariance[30:36])
         self.pose.orientation.w, self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z = quaternion_from_euler(0, 0, newYaw)
+
+        print("Ending Pose: {}".format(self.pose))
+        print("Ending Covariance: {}".format(self.covariance))
         
     # Compiles our representation into an object that we want 
     # return: PoseWithCovarianceStamped message (http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/PoseWithCovarianceStamped.html)
