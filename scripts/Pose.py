@@ -2,17 +2,19 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Vector3
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
-from operator import add, div
+from math import sqrt
 import rospy 
 import numpy 
 
 # Custom pose class that has commonly used mapping functionality 
 class CustomPose:
 
+    # TODO: Probably cleaner to just use a PoseWithCovarianceStamped object rather than keeping the fields separate 
     def __init__(self):
         self.pose = Pose()
         self.covariance = [0] * 36 # float64[36] type
-        self.confidence = [0, 0, 0, 0] # 4-tuple representing x-y-z-yaw confidence        
+        self.confidence = [0, 0, 0, 0] # 4-tuple representing x-y-z-yaw confidence   
+        self.time = None      
     
     # Calculates a weighted average between the current value and a value from a message.
     # Weight is calculated from covariance. Also calculates a new covariance value.
@@ -45,29 +47,60 @@ class CustomPose:
     # TODO: Implement
     def isValidMeasurement(self, msg, confidence):
 
+        # Used throughout
+        msg_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
+        msg_roll, msg_pitch, msg_yaw = euler_from_quaternion(msg_quat)
+        self_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
+        self_roll, self_pitch, self_yaw = euler_from_quaternion(self_quat)
+
+        ''' 
+        Confidence check temporarily removed, as the pole detector gives us zero for this. Normal perception won't; we'll test it further down the line.
         # Reject anything that isn't at least a moderate confidence value (also gets rid of division by zero errors down the line)
-        if confidence < .05:
+        if confidence < .1:
             print("Rejecting due to low confidence ({}).".format(confidence))
             return False
+        '''
 
-        # Reject anything that isn't realistically inside transdec
+        # Reject anything that isn't realistically inside transdec or our environment 
         if msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or \
-            msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or \
-            msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500:
+            msg.pose.pose.position.y >= 500 or msg.pose.pose.position.y <= -500 or \
+            msg.pose.pose.position.z >= 500 or msg.pose.pose.position.z <= -500:
             print("Rejecting due to being too far from the origin.")
             return False
 
         # Reject anything that isn't reasonably flat 
-        quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
-        roll, pitch, _ = euler_from_quaternion(quat)
-        if roll <= -15 or roll >= 15 or \
-            pitch <= -15 or roll >= 15:
+        if msg_roll <= -15 or msg_roll >= 15 or \
+            msg_pitch <= -15 or msg_pitch >= 15:
             print("Rejecting due to having abnormal roll/pitch.")
             return False 
 
+        # If we're at a high confidence rating, reject anything that is significantly far from our current reading
+        # The concern here is that we get zeroed in on outliers too quickly; 
+        # generally, outliers will be inconsistent enough that this isn't a concern, but it's still something to potentially worry about
+        if self.confidence[0] > .9:
+            diff = abs(self.pose.position.x - msg.pose.pose.position.x)
+            if diff > 1:
+                print("Rejecting because our x-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[0], msg.pose.pose.position.x, diff))
+                return False 
+        if self.confidence[1] > .9:
+            diff = abs(self.pose.position.y - msg.pose.pose.position.y)
+            if diff > 1:
+                print("Rejecting because our y-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[1], msg.pose.pose.position.y, diff))
+                return False 
+        if self.confidence[2] > .9:
+            diff = abs(self.pose.position.z - msg.pose.pose.position.z)
+            if diff > 1:
+                print("Rejecting because our z-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[2], msg.pose.pose.position.z, diff))
+                return False 
+        if self.confidence[3] > .9:
+            diff = abs(self_yaw - msg_yaw)
+            if diff > 45:
+                print("Rejecting because our yaw-certainty {} is high enough to reject {}deg, which is {}deg away.".format(self.confidence[3], msg_yaw, diff))
+                return False 
+
         # TODO: Reject anything that is too far from the robot for us to realistically perceive (maybe 100m?) 
         # TODO: Reject anything that isn't within the robot's realistic field of view 
-        # TODO: If we're at a high confidence rating, reject anything that is significantly far from our current reading 
+        # (which perception shouldn't give us in the first place, but doesn't hurt to check)
 
         # If it didn't fail any checks, assume it's a good reading 
         return True 
@@ -77,13 +110,15 @@ class CustomPose:
     # Confidence: [0, 1] score of how confident DOPE is that it is the object in question 
     def addPositionEstimate(self, msg, confidence):
 
-        # Filter out "invalid" measurements 
+        # Filter out "false positives"
+        # If we make it past this, we assume it's a true positive and is actually the object
         if not self.isValidMeasurement(msg, confidence):
             return
 
+        # Update timestamp so it's the most recent routine 
+        self.time = rospy.get_rostime()
+
         # Convenient aliases
-        # currPose = self.pose 
-        # currCovariance = self.covariance 
         msgPose = msg.pose.pose
         msgCovariance = msg.pose.covariance
 
@@ -98,10 +133,10 @@ class CustomPose:
         _, _, msgYaw = euler_from_quaternion([msgPose.orientation.w, msgPose.orientation.x, msgPose.orientation.y, msgPose.orientation.z])
 
         # Update poses
-        self.pose.position.x = self.compareValues(self.pose.position.x, msgPose.position.x, self.confidence[0], confidence) # x
-        self.pose.position.y = self.compareValues(self.pose.position.y, msgPose.position.y, self.confidence[1], confidence) # y
-        self.pose.position.z = self.compareValues(self.pose.position.z, msgPose.position.z, self.confidence[2], confidence) # z
-        newYaw = self.compareValues(currYaw, msgYaw, self.confidence[3], confidence) # yaw
+        self.pose.position.x = self.compareValues(self.pose.position.x, msgPose.position.x, self.confidence[0], 1 if msgCovariance[0] == 0 else 1 / msgCovariance[0]) # x
+        self.pose.position.y = self.compareValues(self.pose.position.y, msgPose.position.y, self.confidence[1], 1 if msgCovariance[7] == 0 else 1 / msgCovariance[7]) # y
+        self.pose.position.z = self.compareValues(self.pose.position.z, msgPose.position.z, self.confidence[2], 1 if msgCovariance[14] == 0 else 1 / msgCovariance[14]) # z
+        newYaw = self.compareValues(currYaw, msgYaw, self.confidence[3], 1 if msgCovariance[35] == 0 else 1 / msgCovariance[35]) # yaw
 
         # TODO: Update Covariances... it's something like this but there's probably a lot wrong with it 
         # self.pose.position.x, self.covariance[0:6] = self.compareValues(self.pose.position.x, msgPose.position.x, self.covariance[0:6], msgCovariance[0:6]) # x
@@ -120,5 +155,5 @@ class CustomPose:
         obj = PoseWithCovarianceStamped()
         obj.pose.pose = self.pose
         obj.pose.covariance = self.covariance
-        obj.header.stamp = rospy.get_rostime() # Time Stamp
+        obj.header.stamp = self.time # Time Stamp
         return obj

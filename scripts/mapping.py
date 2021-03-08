@@ -84,10 +84,10 @@ def poleCallback(msg):
         convertedPos = tl.transformPose(worldFrame, p1)
 
         p1Stamped = PoseWithCovarianceStamped()
-        p1Stamped.header = p1.header 
+        p1Stamped.header.stamp = t
+        p1Stamped.header.frame_id = worldFrame
         p1Stamped.pose.pose = convertedPos.pose
 
-        # BUG: We transform a PoseStamped perfectly fine, but there's no easy way to transform the covariance, which is what gets actually fed into our system 
         # To do that you just need to make a rotation matrix and then apply it to your covariance matrix
         # Applying a rotation to a matrix is R * COV * RT where the T is transpose
         rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
@@ -97,11 +97,6 @@ def poleCallback(msg):
         p1Stamped.pose.covariance[6:9] = rotated_result[1, 0:3]
         p1Stamped.pose.covariance[12:15] = rotated_result[2, 0:3]
         p1Stamped.pose.covariance[5:6] = result.pose.covariance[5:6] # Rotation doesn't get rotated
-
-        # poseMsg = PoseStamped()
-        # poseMsg.header = detection.header # tf transforms need a PoseStamped, not a PoseWithCovarianceStamped like we have
-        # poseMsg.pose = result.pose.pose
-        # convertedPos = tl.transformPose("world", pose)
 
         # Merge the given position into our position for that object
         objects[name]["pose"].addPositionEstimate(p1Stamped, result.score)
