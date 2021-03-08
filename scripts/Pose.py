@@ -48,7 +48,7 @@ class CustomPose:
             return False
 
         # Reject anything that isn't reasonably flat 
-        roll, pitch, yaw = euler_from_quaternion(msg.pose.pose.orientation)
+        roll, pitch, _ = euler_from_quaternion(msg.pose.pose.orientation)
         if roll <= -15 or roll >= 15 or \
             pitch <= -15 or roll >= 15:
             return False 
