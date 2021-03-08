@@ -37,10 +37,28 @@ class CustomPose:
         return newVal, newCov
 
     # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
-    # msg: PoseWithCovariance Stamped 
+    # msg: PoseWithCovarianceStamped 
     # TODO: Implement
     def isValidMeasurement(self, msg):
-        return True # Placeholder for zero filtering 
+
+        # Reject anything that isn't realistically inside transdec
+        if msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or
+            msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or
+            msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500:
+            return False
+
+        # Reject anything that isn't reasonably flat 
+        roll, pitch, yaw = euler_from_quaternion(msg.pose.pose.orientation)
+        if roll <= -15 or roll >= 15 or \
+            pitch <= -15 or roll >= 15:
+            return False 
+
+        # TODO: Reject anything that is too far from the robot for us to realistically perceive (maybe 100m?) 
+        # TODO: Reject anything that isn't within the robot's realistic field of view 
+        # TODO: If we're at a high confidence rating, reject anything that is significantly far from our current reading 
+
+        # If it didn't fail any checks, assume it's a good reading 
+        return True 
 
     # Takes in a new DOPE reading and updates our estimate
     # msg: PoseWithCovarianceStamped Object (http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/PoseWithCovariance.html)
