@@ -27,20 +27,41 @@ class CustomPose:
     # Takes in one axis's data; that's one pose value for each and one covariance *row* for each 
     def compareValues (self, currVal, msgVal, currConfidence, msgConfidence):
 
-        currWeight = currConfidence * 100
-        msgWeight = msgConfidence * 100
+        if currConfidence > 1 or currConfidence < 0:
+            rospy.logerr("currConfidence bad value: {}".format(currConfidence))
+        elif msgConfidence > 1 or msgConfidence < 0:
+            rospy.logerr("msgConfidence bad value: {}".format(msgConfidence))
 
-        print("Current Weight: {}".format(currWeight))
-        print("Message Weight: {}".format(msgWeight))
+        # print("Current Weight: {}".format(currWeight))
+        # print("Message Weight: {}".format(msgWeight))
 
-        newVal = ((currVal * currWeight) + (msgVal * msgWeight)) / (currWeight + msgWeight)
+        newVal = ((currVal * currConfidence) + (msgVal * msgConfidence)) / (currConfidence + msgConfidence)
+        
+        # Closer values increase our certainty, further values decrease our certainty 
+        # TODO: Scale this based on how close to the object we are 
+        certaintyChange = 0
+        diff = abs(newVal - currVal)
+        if diff < .1 and diff >= .025:
+            certaintyChange = .000001 * (1 - currConfidence) * msgConfidence
+        elif diff < .025 and diff >= .01:
+            certaintyChange = .00001 * (1 - currConfidence) * msgConfidence
+        elif diff < .01:
+            certaintyChange = .0001 * (1 - currConfidence) * msgConfidence
+
+        # Inaccurate, so 
+        elif diff > .1 and diff <= .5:
+            certaintyChange = -.00001 * (1 - currConfidence) * msgConfidence
+        elif diff > .5:
+            certaintyChange = -.0001 * (1 - currConfidence) * msgConfidence
+
+        rospy.loginfo_throttle(1, "certaintyChange: {}".format(certaintyChange))
 
         # Calculate a new covariance value by essentially averaging both arrays 
         # newCov = list(map(add, currCovarianceVal, msgCovarianceVal))
         # newCov = [x / 2 for x in newCov]
         # newCov = 
 
-        return newVal # , newCov
+        return newVal, certaintyChange # , newCov
 
     # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
     # msg: PoseWithCovarianceStamped 
@@ -65,13 +86,13 @@ class CustomPose:
         if msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or \
             msg.pose.pose.position.y >= 500 or msg.pose.pose.position.y <= -500 or \
             msg.pose.pose.position.z >= 500 or msg.pose.pose.position.z <= -500:
-            print("Rejecting due to being too far from the origin.")
+            rospy.logwarn("Rejecting due to being too far from the origin.")
             return False
 
         # Reject anything that isn't reasonably flat 
         if msg_roll <= -15 or msg_roll >= 15 or \
             msg_pitch <= -15 or msg_pitch >= 15:
-            print("Rejecting due to having abnormal roll/pitch.")
+            rospy.logwarn("Rejecting due to having abnormal roll/pitch.")
             return False 
 
         # If we're at a high confidence rating, reject anything that is significantly far from our current reading
@@ -80,22 +101,22 @@ class CustomPose:
         if self.confidence[0] > .9:
             diff = abs(self.pose.position.x - msg.pose.pose.position.x)
             if diff > 1:
-                print("Rejecting because our x-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[0], msg.pose.pose.position.x, diff))
+                rospy.logwarn("Rejecting because our x-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[0], msg.pose.pose.position.x, diff))
                 return False 
         if self.confidence[1] > .9:
             diff = abs(self.pose.position.y - msg.pose.pose.position.y)
             if diff > 1:
-                print("Rejecting because our y-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[1], msg.pose.pose.position.y, diff))
+                rospy.logwarn("Rejecting because our y-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[1], msg.pose.pose.position.y, diff))
                 return False 
         if self.confidence[2] > .9:
             diff = abs(self.pose.position.z - msg.pose.pose.position.z)
             if diff > 1:
-                print("Rejecting because our z-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[2], msg.pose.pose.position.z, diff))
+                rospy.logwarn("Rejecting because our z-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[2], msg.pose.pose.position.z, diff))
                 return False 
         if self.confidence[3] > .9:
             diff = abs(self_yaw - msg_yaw)
             if diff > 45:
-                print("Rejecting because our yaw-certainty {} is high enough to reject {}deg, which is {}deg away.".format(self.confidence[3], msg_yaw, diff))
+                rospy.logwarn("Rejecting because our yaw-certainty {} is high enough to reject {}deg, which is {}deg away.".format(self.confidence[3], msg_yaw, diff))
                 return False 
 
         # TODO: Reject anything that is too far from the robot for us to realistically perceive (maybe 100m?) 
@@ -110,6 +131,10 @@ class CustomPose:
     # Confidence: [0, 1] score of how confident DOPE is that it is the object in question 
     def addPositionEstimate(self, msg, confidence):
 
+        # Debug 
+        rospy.loginfo_throttle(1, "Certainties: ({}%, {}%, {}%, {}%)" \
+            .format(self.confidence[0] * 100, self.confidence[1] * 100, self.confidence[2] * 100, self.confidence[3] * 100))
+
         # Filter out "false positives"
         # If we make it past this, we assume it's a true positive and is actually the object
         if not self.isValidMeasurement(msg, confidence):
@@ -122,21 +147,39 @@ class CustomPose:
         msgPose = msg.pose.pose
         msgCovariance = msg.pose.covariance
 
-        print("addPositionEstimate()")
-        print("Current Pose: {}".format(self.pose))
+        # print("addPositionEstimate()")
+        # print("Current Pose: {}".format(self.pose))
         # print("Current Covariance: {}".format(self.covariance))
-        print("Message Pose: {}".format(msgPose))
+        # print("Message Pose: {}".format(msgPose))
         # print("Message Covariance: {}".format(msgCovariance))
 
         # Convert angles to euler
         _, _, currYaw = euler_from_quaternion([self.pose.orientation.w, self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z])
         _, _, msgYaw = euler_from_quaternion([msgPose.orientation.w, msgPose.orientation.x, msgPose.orientation.y, msgPose.orientation.z])
 
+        # Normalize the covariance array to [0, 1)
+        if max(msgCovariance) != 0:
+            for i in range(len(msgCovariance)):
+                msgCovariance[i] = msgCovariance[i] / max(msgCovariance)
+                msgCovariance[i] = (msgCovariance[i] + 1) / 2
+
         # Update poses
-        self.pose.position.x = self.compareValues(self.pose.position.x, msgPose.position.x, self.confidence[0], 1 if msgCovariance[0] == 0 else 1 / msgCovariance[0]) # x
-        self.pose.position.y = self.compareValues(self.pose.position.y, msgPose.position.y, self.confidence[1], 1 if msgCovariance[7] == 0 else 1 / msgCovariance[7]) # y
-        self.pose.position.z = self.compareValues(self.pose.position.z, msgPose.position.z, self.confidence[2], 1 if msgCovariance[14] == 0 else 1 / msgCovariance[14]) # z
-        newYaw = self.compareValues(currYaw, msgYaw, self.confidence[3], 1 if msgCovariance[35] == 0 else 1 / msgCovariance[35]) # yaw
+        self.pose.position.x, x_certaintychange = self.compareValues(self.pose.position.x, msgPose.position.x, self.confidence[0], 1 - msgCovariance[0]) # x
+        self.pose.position.y, y_certaintychange = self.compareValues(self.pose.position.y, msgPose.position.y, self.confidence[1], 1 - msgCovariance[7]) # y
+        self.pose.position.z, z_certaintychange = self.compareValues(self.pose.position.z, msgPose.position.z, self.confidence[2], 1 - msgCovariance[14]) # z
+        newYaw, yaw_certaintychange = self.compareValues(currYaw, msgYaw, self.confidence[3], 1 - msgCovariance[35]) # yaw
+
+        # Apply our certainty changes
+        self.confidence[0] = x_certaintychange
+        self.confidence[1] += y_certaintychange
+        self.confidence[2] += z_certaintychange
+        self.confidence[3] += yaw_certaintychange
+
+        # Clamp to [0, 1)
+        self.confidence[0] = max(0, min(self.confidence[0], 1))
+        self.confidence[1] = max(0, min(self.confidence[0], 1))
+        self.confidence[2] = max(0, min(self.confidence[0], 1))
+        self.confidence[3] = max(0, min(self.confidence[0], 1))
 
         # TODO: Update Covariances... it's something like this but there's probably a lot wrong with it 
         # self.pose.position.x, self.covariance[0:6] = self.compareValues(self.pose.position.x, msgPose.position.x, self.covariance[0:6], msgCovariance[0:6]) # x
@@ -146,7 +189,7 @@ class CustomPose:
         # Convert angles back to quaternions and update result  
         self.pose.orientation.w, self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z = quaternion_from_euler(0, 0, newYaw)
 
-        print("Ending Pose: {}".format(self.pose))
+        # print("Ending Pose: {}".format(self.pose))
         # print("Ending Covariance: {}".format(self.covariance))
         
     # Compiles our representation into an object that we want 

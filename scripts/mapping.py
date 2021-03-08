@@ -81,7 +81,13 @@ def poleCallback(msg):
         p1.header.frame_id = cameraFrame
         p1.header.stamp = t
         p1.pose = result.pose.pose
+        print("Converting camera frame {} to world frame {}".format(cameraFrame, worldFrame))
+        print("Pre-Transform: {}".format(p1))\
+
+        # BUG: Pretty sure this transform is messing up, considering it puts me 42 meters away from the origin which is *not* right 
+        # It's presumably related to this error: Error: TF_NAN_INPUT: Ignoring transform for child_frame_id "pole_frame" from authority "/puddles/mapping" because of a nan value in the transform (-nan -nan -nan) (0.000000 0.001557 0.999999 0.000000)at line 244 in /tmp/binarydeb/ros-melodic-tf2-0.6.5/src/buffer_core.cpp
         convertedPos = tl.transformPose(worldFrame, p1)
+        print("Post-Transform: {}".format(convertedPos))
 
         p1Stamped = PoseWithCovarianceStamped()
         p1Stamped.header.stamp = t
@@ -103,7 +109,7 @@ def poleCallback(msg):
 
         # Publish that object's data out 
         poseStamped = objects[name]["pose"].getPoseWithCovarianceStamped()
-        objects[name]["publisher"].publish(poseStamped)
+        objects[name]["publisher"].publish(p1Stamped)
 
         # Publish /tf data for the given object 
         pose = poseStamped.pose.pose # Get the embedded geometry_msgs/Pose (we don't need timestamp/covariance)
