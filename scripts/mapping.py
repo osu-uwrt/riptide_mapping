@@ -185,16 +185,16 @@ def dopeCallback(msg):
 '''
 
 
-# Takes in an object and position data to produce an initial pose estimate 
-# and associated covariance for the given object
+# Takes in an object and position data to produce an initial pose estimate,
+# confidence score, and associated covariance for the given object
 # 
 # param: object - object to get estimate of
-# param: positions - parsed yaml object (ie yaml.load) of position data
+# param: data - parsed yaml object (ie yaml.load) of object data
 # returns: newPose - CustomPose object created from the initial data
-def initialObjectPose(object, positions):
+def initialObjectPose(object, data):
     
-    # Load object data from positions
-    objectData = positions['objects']
+    # Load the object's information from data
+    objectData = data['objects']
 
     objectPosition = objectData[object]['pose']['position']
     objectOrientation = objectData[object]['pose']['orientation']
@@ -215,11 +215,15 @@ def initialObjectPose(object, positions):
 
     # 6x6 covariance matrix
     objectCovariance = objectData[object]['covariance']
+
+    # Confidence
+    objectConfidence = objectData[object]['confidence']
     
     # Instantiate a CustomPose object to store pose and covariance information
     newPose = CustomPose()
     newPose.pose = objectPose
     newPose.covariance = objectCovariance
+    newPose.confidence = objectConfidence
 
     return newPose
     
@@ -232,14 +236,13 @@ if __name__ == '__main__':
     worldFrame = "/world"
     cameraFrame = "{}stereo/left_link".format(rospy.get_namespace())
 
-    # Initial object positions loaded from positions.yaml
-
-    initial_positions_file = open(rospy.get_param("/puddles/mapping/initial_positions"))
-    initial_positions = yaml.load(initial_positions_file, Loader=yaml.FullLoader)
+    # Initial object data loaded from initial_object_data.yaml
+    initial_data_file = open(rospy.get_param("/puddles/mapping/initial_object_data"))
+    initial_data = yaml.load(initial_positions_file, Loader=yaml.FullLoader)
     
     # For each of our objects, set an initial estimate of their pose
     for object in objects:
-        newPose = initialObjectPose(object, initial_positions)
+        newPose = initialObjectPose(object, initial_data)
         # Set this objects pose to the new one that was just created
         objects[object]['pose'] = newPose
         
