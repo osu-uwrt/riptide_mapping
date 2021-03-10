@@ -238,7 +238,7 @@ if __name__ == '__main__':
 
     # Initial object data loaded from initial_object_data.yaml
     initial_data_file = open(rospy.get_param("/puddles/mapping/initial_object_data"))
-    initial_data = yaml.load(initial_positions_file, Loader=yaml.FullLoader)
+    initial_data = yaml.load(initial_data_file, Loader=yaml.FullLoader)
     
     # For each of our objects, set an initial estimate of their pose
     for object in objects:
