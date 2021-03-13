@@ -55,7 +55,6 @@ def poleCallback(msg):
         p1.header.stamp = t
         p1.pose = result.pose.pose
 
-        # BUG: Pretty sure this transform is messing up, considering it puts me 42 meters away from the origin which is *not* right
         convertedPos = tl.transformPose(worldFrame, p1)
 
         # Get the reading in the world frame message all together

@@ -8,4 +8,4 @@ objects:
 
     # x,y,z,yaw covariances (higher = more uncertain)
     # units m^2
-    covariance: [.25, .25, .000001, .000001]
+    covariance: [.5, .5, .000001, .000001]

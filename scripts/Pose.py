@@ -20,7 +20,7 @@ class CustomPose:
         self.pos = pos # Length 3 List; x/y/z
         self.yaw = yaw
         self.covariance = cov # Length 4 List; x/y/z/yaw
-        self.stamp = Time() # stamp/time
+        self.stamp = rospy.Time() # stamp/time
 
     # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
     # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
@@ -28,31 +28,10 @@ class CustomPose:
     def isValidMeasurement(self, msg, msg_camera_frame, confidence):
 
         # Used throughout
-        msg_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
+        msg_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
         msg_roll, msg_pitch, msg_yaw = euler_from_quaternion(msg_quat)
-        self_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
+        self_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
         _, _, self_yaw = euler_from_quaternion(self_quat)
-
-        # If estimate is outside of one standard deviation of our estimate mean, ignore it
-        # TODO: Implement yaw check 
-        # TODO: z-check will matter for competition, put it back in and test it 
-        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * .75:
-            rospy.logwarn("Rejecting due to being unlikely in x-direction.")
-            return False
-        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * .75:
-            rospy.logwarn("Rejecting due to being unlikely in y-direction.")
-            return False 
-        # if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * 2:
-        #     rospy.logwarn("Rejecting due to being unlikely in z-direction.")
-        #     return False
-
-        ''' 
-        Confidence check temporarily removed, as the pole detector gives us zero for this. Normal perception won't; we'll test it further down the line.
-        # Reject anything that isn't at least a moderate confidence value (also gets rid of division by zero errors down the line)
-        if confidence < .1:
-            print("Rejecting due to low confidence ({}).".format(confidence))
-            return False
-        '''
 
         # Reject anything that is too far from the origin (i.e. outside transdec)
         if msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or \
@@ -66,6 +45,26 @@ class CustomPose:
             msg_pitch <= -15 * DEG_TO_RAD or msg_pitch >= 15 * DEG_TO_RAD:
             rospy.logwarn("Rejecting due to having abnormal roll/pitch.")
             return False 
+
+        # TODO: Implement yaw check 
+        # TODO: z-check will matter for competition, we just disabled it to test with the pole for pool tests. Put it back in.
+        # if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * 2:
+        #     rospy.logwarn("Rejecting due to being unlikely in z-direction.")
+        #     return False
+        # TODO: Probably a way to factor in the message's covariance into this calculation as well. While the pole detector essentially gives us constant covariance for detections, we want super confident estimates to be rejected less. 
+        # If estimate is outside of one standard deviation of our estimate mean, ignore it
+        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * 1:
+            rospy.logwarn("Rejecting due to being unlikely (x-direction)")
+            return False
+        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * 1:
+            rospy.logwarn("Rejecting due to being unlikely (y-direction)")
+            return False 
+
+        # TODO: We want to reject unconfident guesses. Currently disabled, as the pole detector just sets this to zero; reenable it.
+        # Reject anything that isn't at least a moderate confidence value (also gets rid of division by zero errors down the line)
+        # if confidence < .1:
+        #     print("Rejecting due to low confidence ({}).".format(confidence))
+        #     return False
 
         # TODO: Reject anything that is too far for us to realistically perceive (100m?)
         # TODO: Reject anything that isn't within the robot's realistic field of view 
@@ -98,7 +97,7 @@ class CustomPose:
         if not self.isValidMeasurement(msg, msg_camera_frame, confidence):
             return
 
-        rospy.loginfo("Got a valid measurement! {}".format(msg))
+        # rospy.loginfo("Got a valid measurement! {}".format(msg))
 
         # Update timestamp so it's the most recent routine 
         self.stamp = msg.header.stamp
@@ -118,6 +117,8 @@ class CustomPose:
         msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
         self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], msg_covariance[35])
 
+    # When getting distance between angles, situations like angle1=20 and angle2=340 will return that there's 320deg between them, not 40. 
+    # This essentially standardizes that procedure!
     def constrain_angle(self, angle1, angle2):
         while angle2 > angle1 + pi:
             angle2 -= 2*pi
