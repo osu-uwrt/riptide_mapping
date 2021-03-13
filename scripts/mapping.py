@@ -170,7 +170,7 @@ def dopeCallback(msg):
 def initial_object_pose(object_name, data):
     object_position = data["position"]
     object_yaw = data["yaw"]
-    object_covariance = data["covariance"] * 180 / pi # file uses degrees to be more human-readable, code uses rads
+    object_covariance = data["covariance"] * pi / 180 # file uses degrees to be more human-readable, code uses rads
     return CustomPose(object_position, object_yaw, object_covariance)
     
 if __name__ == '__main__':
