@@ -72,7 +72,7 @@ class CustomPose:
         msg_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
         msg_roll, msg_pitch, msg_yaw = euler_from_quaternion(msg_quat)
         self_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
-        self_roll, self_pitch, self_yaw = euler_from_quaternion(self_quat)
+        _, _, self_yaw = euler_from_quaternion(self_quat)
 
         ''' 
         Confidence check temporarily removed, as the pole detector gives us zero for this. Normal perception won't; we'll test it further down the line.
@@ -127,9 +127,10 @@ class CustomPose:
         return True 
 
     # Takes in a new DOPE reading and updates our estimate
-    # msg: PoseWithCovarianceStamped Object (http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/PoseWithCovariance.html)
+    # msg: PoseWithCovarianceStamped of our new reading (WORLD FRAME)
+    # msg_camera_frame: PoseWithCovarianceStamped of our new reading (CAMERA FRAME); just used for error checking 
     # Confidence: [0, 1] score of how confident DOPE is that it is the object in question 
-    def addPositionEstimate(self, msg, confidence):
+    def addPositionEstimate(self, msg, msg_camera_frame, confidence):
 
         # Debug 
         rospy.loginfo_throttle(1, "Certainties: ({}%, {}%, {}%, {}%)" \
@@ -158,9 +159,10 @@ class CustomPose:
         _, _, msgYaw = euler_from_quaternion([msgPose.orientation.w, msgPose.orientation.x, msgPose.orientation.y, msgPose.orientation.z])
 
         # Normalize the covariance array to [0, 1)
-        if max(msgCovariance) != 0:
+        covariance_max = max(msgCovariance)
+        if covariance_max != 0:
             for i in range(len(msgCovariance)):
-                msgCovariance[i] = msgCovariance[i] / max(msgCovariance)
+                msgCovariance[i] = msgCovariance[i] / covariance_max
                 msgCovariance[i] = (msgCovariance[i] + 1) / 2
 
         # Update poses
@@ -169,8 +171,8 @@ class CustomPose:
         self.pose.position.z, z_certaintychange = self.compareValues(self.pose.position.z, msgPose.position.z, self.confidence[2], 1 - msgCovariance[14]) # z
         newYaw, yaw_certaintychange = self.compareValues(currYaw, msgYaw, self.confidence[3], 1 - msgCovariance[35]) # yaw
 
-        # Apply our certainty changes
-        self.confidence[0] = x_certaintychange
+        # Apply our certainty changes and clamp to [0, 1)
+        self.confidence[0] += x_certaintychange
         self.confidence[1] += y_certaintychange
         self.confidence[2] += z_certaintychange
         self.confidence[3] += yaw_certaintychange

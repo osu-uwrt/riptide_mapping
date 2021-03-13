@@ -4,6 +4,7 @@ import rospy
 import tf
 import yaml
 import numpy
+import copy 
 from vision_msgs.msg import Detection3DArray
 from vision_msgs.msg import Detection3D
 from geometry_msgs.msg import Pose
@@ -66,9 +67,6 @@ def poleCallback(msg):
     # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
     for result in msg.results: 
 
-        # NOTE: Rather than decide here if it meets our threshold for adding an estimate, the cleaner way to do it is
-        # to just pass it over regardless. addPositionEstimate will simply barely change our estimate if our certainty is low.
-
         # Translate the ID that DOPE gives us to a name meaningful to us
         name = objectIDs[result.id]
 
@@ -89,30 +87,37 @@ def poleCallback(msg):
         convertedPos = tl.transformPose(worldFrame, p1)
         print("Post-Transform: {}".format(convertedPos))
 
-        p1Stamped = PoseWithCovarianceStamped()
-        p1Stamped.header.stamp = t
-        p1Stamped.header.frame_id = worldFrame
-        p1Stamped.pose.pose = convertedPos.pose
+        # Get the reading in the world frame message all together
+        reading_world_frame = PoseWithCovarianceStamped()
+        reading_world_frame.header.stamp = t
+        reading_world_frame.header.frame_id = worldFrame
+        reading_world_frame.pose.pose = copy.deepcopy(convertedPos.pose)
 
+        # Apply rotation to covariance matrix 
         # To do that you just need to make a rotation matrix and then apply it to your covariance matrix
         # Applying a rotation to a matrix is R * COV * RT where the T is transpose
         rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
         cov = numpy.array([ result.pose.covariance[0:3], result.pose.covariance[6:9], result.pose.covariance[12:15] ])
         rotated_result = numpy.dot(rotation_matrix, numpy.dot(cov, rotation_matrix.T))
-        p1Stamped.pose.covariance[0:3] = rotated_result[0, 0:3] # Translation gets rotated
-        p1Stamped.pose.covariance[6:9] = rotated_result[1, 0:3]
-        p1Stamped.pose.covariance[12:15] = rotated_result[2, 0:3]
-        p1Stamped.pose.covariance[5:6] = result.pose.covariance[5:6] # Rotation doesn't get rotated
+        reading_world_frame.pose.covariance[0:3] = rotated_result[0, 0:3] # Translation gets rotated
+        reading_world_frame.pose.covariance[6:9] = rotated_result[1, 0:3]
+        reading_world_frame.pose.covariance[12:15] = rotated_result[2, 0:3]
+        reading_world_frame.pose.covariance[5:6] = result.pose.covariance[5:6] # Rotation doesn't get rotated
+
+        # We do some error/reasonability checking with this
+        reading_camera_frame = PoseWithCovarianceStamped()
+        reading_camera_frame.header = copy.deepcopy(msg.header)
+        reading_camera_frame.pose = result.pose
 
         # Merge the given position into our position for that object
-        objects[name]["pose"].addPositionEstimate(p1Stamped, result.score)
+        objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.score)
 
         # Publish that object's data out 
-        poseStamped = objects[name]["pose"].getPoseWithCovarianceStamped()
-        objects[name]["publisher"].publish(p1Stamped)
+        output_pose = objects[name]["pose"].getPoseWithCovarianceStamped()
+        objects[name]["publisher"].publish(output_pose)
 
         # Publish /tf data for the given object 
-        pose = poseStamped.pose.pose # Get the embedded geometry_msgs/Pose (we don't need timestamp/covariance)
+        pose = output_pose.pose.pose # Get the embedded geometry_msgs/Pose (we don't need timestamp/covariance)
         translation = (pose.position.x, pose.position.y, pose.position.z) # Needs to be a 3-tuple rather than an object
         rotation = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w) # Needs to be a 4-tuple rather than an object
         time = rospy.get_rostime()
