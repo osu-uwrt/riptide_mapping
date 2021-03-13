@@ -11,6 +11,7 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from Pose import CustomPose
+from math import pi
 
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
@@ -169,7 +170,7 @@ def dopeCallback(msg):
 def initial_object_pose(object_name, data):
     object_position = data["position"]
     object_yaw = data["yaw"]
-    object_covariance = data["covariance"]
+    object_covariance = data["covariance"] * 180 / pi # file uses degrees to be more human-readable, code uses rads
     return CustomPose(object_position, object_yaw, object_covariance)
     
 if __name__ == '__main__':
