@@ -3,7 +3,7 @@
 import rospy
 import tf
 import yaml
-import numpy
+import numpy as np
 import copy 
 from vision_msgs.msg import Detection3DArray
 from vision_msgs.msg import Detection3D
@@ -14,32 +14,7 @@ from Pose import CustomPose
 
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
-objects = {
-    "gate": {
-        "pose": CustomPose(),
-        "publisher": None
-    },
-    "buoy": {
-        "pose": CustomPose(),
-        "publisher": None
-    },
-    "markers": {
-        "pose": CustomPose(),
-        "publisher": None
-    },
-    "torpedoes": {
-        "pose": CustomPose(),
-        "publisher": None
-    },
-    "retrieve": {
-        "pose": CustomPose(),
-        "publisher": None
-    }, 
-    "pole": {
-        "pose": CustomPose(), 
-        "publisher": None
-    }
-}
+objects = {}
 
 # DOPE will likely give us a probability map, but it will be linked via IDs instead of names. This is how we translate.
 # We might be able to just make this an array unless the IDs we get from dope are not sequential for some reason.
@@ -79,13 +54,9 @@ def poleCallback(msg):
         p1.header.frame_id = cameraFrame
         p1.header.stamp = t
         p1.pose = result.pose.pose
-        print("Converting camera frame {} to world frame {}".format(cameraFrame, worldFrame))
-        print("Pre-Transform: {}".format(p1))\
 
-        # BUG: Pretty sure this transform is messing up, considering it puts me 42 meters away from the origin which is *not* right 
-        # It's presumably related to this error: Error: TF_NAN_INPUT: Ignoring transform for child_frame_id "pole_frame" from authority "/puddles/mapping" because of a nan value in the transform (-nan -nan -nan) (0.000000 0.001557 0.999999 0.000000)at line 244 in /tmp/binarydeb/ros-melodic-tf2-0.6.5/src/buffer_core.cpp
+        # BUG: Pretty sure this transform is messing up, considering it puts me 42 meters away from the origin which is *not* right
         convertedPos = tl.transformPose(worldFrame, p1)
-        print("Post-Transform: {}".format(convertedPos))
 
         # Get the reading in the world frame message all together
         reading_world_frame = PoseWithCovarianceStamped()
@@ -96,13 +67,12 @@ def poleCallback(msg):
         # Apply rotation to covariance matrix 
         # To do that you just need to make a rotation matrix and then apply it to your covariance matrix
         # Applying a rotation to a matrix is R * COV * RT where the T is transpose
+        covariance_matrix = np.array(result.pose.covariance).reshape((6, 6))
         rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
-        cov = numpy.array([ result.pose.covariance[0:3], result.pose.covariance[6:9], result.pose.covariance[12:15] ])
-        rotated_result = numpy.dot(rotation_matrix, numpy.dot(cov, rotation_matrix.T))
-        reading_world_frame.pose.covariance[0:3] = rotated_result[0, 0:3] # Translation gets rotated
-        reading_world_frame.pose.covariance[6:9] = rotated_result[1, 0:3]
-        reading_world_frame.pose.covariance[12:15] = rotated_result[2, 0:3]
-        reading_world_frame.pose.covariance[5:6] = result.pose.covariance[5:6] # Rotation doesn't get rotated
+        cov = covariance_matrix[:3, :3] 
+        rotated_result = np.dot(rotation_matrix, np.dot(cov, rotation_matrix.T))
+        covariance_matrix[:3, :3] = rotated_result
+        reading_world_frame.pose.covariance = covariance_matrix.ravel()
 
         # We do some error/reasonability checking with this
         reading_camera_frame = PoseWithCovarianceStamped()
@@ -196,41 +166,12 @@ def dopeCallback(msg):
 # param: object - object to get estimate of
 # param: data - parsed yaml object (ie yaml.load) of object data
 # returns: newPose - CustomPose object created from the initial data
-def initialObjectPose(object, data):
-    
-    # Load the object's information from data
-    objectData = data['objects']
-
-    objectPosition = objectData[object]['pose']['position']
-    objectOrientation = objectData[object]['pose']['orientation']
-    
-    # Instantiate a Pose object to store pose information
-    objectPose = Pose()
-
-    # Position data
-    objectPose.position.x = objectPosition[0]
-    objectPose.position.y = objectPosition[1]
-    objectPose.position.z = objectPosition[2]
-
-    # Orientation data
-    objectPose.orientation.w = objectOrientation[0]
-    objectPose.orientation.x = objectOrientation[1]
-    objectPose.orientation.y = objectOrientation[2]
-    objectPose.orientation.z = objectOrientation[3]
-
-    # 6x6 covariance matrix
-    objectCovariance = objectData[object]['covariance']
-
-    # Confidence
-    objectConfidence = objectData[object]['confidence']
-    
-    # Instantiate a CustomPose object to store pose and covariance information
-    newPose = CustomPose()
-    newPose.pose = objectPose
-    newPose.covariance = objectCovariance
-    newPose.confidence = objectConfidence
-
-    return newPose
+# Load the object's information from data
+def initial_object_pose(object_name, data):
+    object_position = data["position"]
+    object_yaw = data["yaw"]
+    object_covariance = data["covariance"]
+    return CustomPose(object_position, object_yaw, object_covariance)
     
 if __name__ == '__main__':
 
@@ -239,17 +180,16 @@ if __name__ == '__main__':
     # "class" variables 
     tl = tf.TransformListener()
     worldFrame = "/world"
-    cameraFrame = "{}stereo/left_link".format(rospy.get_namespace())
+    cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
 
     # Initial object data loaded from initial_object_data.yaml
     initial_data_file = open(rospy.get_param("/puddles/mapping/initial_object_data"))
     initial_data = yaml.load(initial_data_file, Loader=yaml.FullLoader)
     
     # For each of our objects, set an initial estimate of their pose
-    for object in objects:
-        newPose = initialObjectPose(object, initial_data)
-        # Set this objects pose to the new one that was just created
-        objects[object]['pose'] = newPose
+    for object_name,_ in initial_data["objects"].items():
+        objects[object_name] = {} 
+        objects[object_name]["pose"] = initial_object_pose(object_name, initial_data["objects"][object_name])
         
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 

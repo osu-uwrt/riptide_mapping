@@ -1,78 +1,50 @@
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Point
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
-from math import sqrt
+from std_msgs.msg import Time
+from math import sqrt, pi
+from copy import deepcopy 
 import rospy 
-import numpy 
+import numpy
+
+DEG_TO_RAD = pi / 180
 
 # Custom pose class that has commonly used mapping functionality 
 class CustomPose:
 
     # TODO: Probably cleaner to just use a PoseWithCovarianceStamped object rather than keeping the fields separate 
-    def __init__(self):
-        self.pose = Pose()
-        self.covariance = [0] * 36 # float64[36] type
-        self.confidence = [0, 0, 0, 0] # 4-tuple representing x-y-z-yaw confidence   
-        self.time = None      
-    
-    # Calculates a weighted average between the current value and a value from a message.
-    # Weight is calculated from covariance. Also calculates a new covariance value.
-    # param: currVal - current value stored in this object
-    # param: msgVal - value received from a ROS message
-    # param: currCovarianceVal - current covariance for this value
-    # param: msgCovarianceVal - covariance of the value from the message
-    # returns: newVal - new value calculated from the paramters above
-    # returns: newCov - new covariance value 
-    # Takes in one axis's data; that's one pose value for each and one covariance *row* for each 
-    def compareValues (self, currVal, msgVal, currConfidence, msgConfidence):
-
-        if currConfidence > 1 or currConfidence < 0:
-            rospy.logerr("currConfidence bad value: {}".format(currConfidence))
-        elif msgConfidence > 1 or msgConfidence < 0:
-            rospy.logerr("msgConfidence bad value: {}".format(msgConfidence))
-
-        # print("Current Weight: {}".format(currWeight))
-        # print("Message Weight: {}".format(msgWeight))
-
-        newVal = ((currVal * currConfidence) + (msgVal * msgConfidence)) / (currConfidence + msgConfidence)
-        
-        # Closer values increase our certainty, further values decrease our certainty 
-        # TODO: Scale this based on how close to the object we are 
-        certaintyChange = 0
-        diff = abs(newVal - currVal)
-        if diff < .1 and diff >= .025:
-            certaintyChange = .000001 * (1 - currConfidence) * msgConfidence
-        elif diff < .025 and diff >= .01:
-            certaintyChange = .00001 * (1 - currConfidence) * msgConfidence
-        elif diff < .01:
-            certaintyChange = .0001 * (1 - currConfidence) * msgConfidence
-
-        # Inaccurate, so 
-        elif diff > .1 and diff <= .5:
-            certaintyChange = -.00001 * (1 - currConfidence) * msgConfidence
-        elif diff > .5:
-            certaintyChange = -.0001 * (1 - currConfidence) * msgConfidence
-
-        rospy.loginfo_throttle(1, "certaintyChange: {}".format(certaintyChange))
-
-        # Calculate a new covariance value by essentially averaging both arrays 
-        # newCov = list(map(add, currCovarianceVal, msgCovarianceVal))
-        # newCov = [x / 2 for x in newCov]
-        # newCov = 
-
-        return newVal, certaintyChange # , newCov
+    def __init__(self, pos, yaw, cov):
+        self.pos = pos # Length 3 List; x/y/z
+        self.yaw = yaw
+        self.covariance = cov # Length 4 List; x/y/z/yaw
+        self.stamp = Time() # stamp/time
 
     # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
-    # msg: PoseWithCovarianceStamped 
-    # TODO: Implement
-    def isValidMeasurement(self, msg, confidence):
+    # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
+    # msg_camera_frame: PoseWithCovariancestamped representing robot in CAMERA frame 
+    def isValidMeasurement(self, msg, msg_camera_frame, confidence):
 
         # Used throughout
         msg_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
         msg_roll, msg_pitch, msg_yaw = euler_from_quaternion(msg_quat)
         self_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
         _, _, self_yaw = euler_from_quaternion(self_quat)
+
+        # If estimate is outside of one standard deviation of our estimate mean, ignore it
+        # TODO: Implement yaw check 
+        # TODO: z-check will matter for competition, put it back in and test it 
+        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * .75:
+            rospy.logwarn("Rejecting due to being unlikely in x-direction.")
+            return False
+        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * .75:
+            rospy.logwarn("Rejecting due to being unlikely in y-direction.")
+            return False 
+        # if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * 2:
+        #     rospy.logwarn("Rejecting due to being unlikely in z-direction.")
+        #     return False
 
         ''' 
         Confidence check temporarily removed, as the pole detector gives us zero for this. Normal perception won't; we'll test it further down the line.
@@ -82,7 +54,7 @@ class CustomPose:
             return False
         '''
 
-        # Reject anything that isn't realistically inside transdec or our environment 
+        # Reject anything that is too far from the origin (i.e. outside transdec)
         if msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or \
             msg.pose.pose.position.y >= 500 or msg.pose.pose.position.y <= -500 or \
             msg.pose.pose.position.z >= 500 or msg.pose.pose.position.z <= -500:
@@ -90,41 +62,24 @@ class CustomPose:
             return False
 
         # Reject anything that isn't reasonably flat 
-        if msg_roll <= -15 or msg_roll >= 15 or \
-            msg_pitch <= -15 or msg_pitch >= 15:
+        if msg_roll <= -15 * DEG_TO_RAD or msg_roll >= 15 * DEG_TO_RAD or \
+            msg_pitch <= -15 * DEG_TO_RAD or msg_pitch >= 15 * DEG_TO_RAD:
             rospy.logwarn("Rejecting due to having abnormal roll/pitch.")
             return False 
 
-        # If we're at a high confidence rating, reject anything that is significantly far from our current reading
-        # The concern here is that we get zeroed in on outliers too quickly; 
-        # generally, outliers will be inconsistent enough that this isn't a concern, but it's still something to potentially worry about
-        if self.confidence[0] > .9:
-            diff = abs(self.pose.position.x - msg.pose.pose.position.x)
-            if diff > 1:
-                rospy.logwarn("Rejecting because our x-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[0], msg.pose.pose.position.x, diff))
-                return False 
-        if self.confidence[1] > .9:
-            diff = abs(self.pose.position.y - msg.pose.pose.position.y)
-            if diff > 1:
-                rospy.logwarn("Rejecting because our y-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[1], msg.pose.pose.position.y, diff))
-                return False 
-        if self.confidence[2] > .9:
-            diff = abs(self.pose.position.z - msg.pose.pose.position.z)
-            if diff > 1:
-                rospy.logwarn("Rejecting because our z-certainty {} is high enough to reject {}, which is {}m away.".format(self.confidence[2], msg.pose.pose.position.z, diff))
-                return False 
-        if self.confidence[3] > .9:
-            diff = abs(self_yaw - msg_yaw)
-            if diff > 45:
-                rospy.logwarn("Rejecting because our yaw-certainty {} is high enough to reject {}deg, which is {}deg away.".format(self.confidence[3], msg_yaw, diff))
-                return False 
-
-        # TODO: Reject anything that is too far from the robot for us to realistically perceive (maybe 100m?) 
+        # TODO: Reject anything that is too far for us to realistically perceive (100m?)
         # TODO: Reject anything that isn't within the robot's realistic field of view 
-        # (which perception shouldn't give us in the first place, but doesn't hurt to check)
+        # (...perception shouldn't give us readings like this in the first place, but doesn't hurt to check)
 
         # If it didn't fail any checks, assume it's a good reading 
         return True 
+
+    # Reconciles two estimates, each with a given estimated value and covariance
+    # From https://ccrma.stanford.edu/~jos/sasp/Product_Two_Gaussian_PDFs.html
+    def update_value(self, val1, val2, cov1, cov2):
+        new_mean = (val1 * cov2 + val2 * cov1) / (cov1 + cov2)
+        new_cov = (cov1 * cov2) / (cov1 + cov2)
+        return new_mean, new_cov 
 
     # Takes in a new DOPE reading and updates our estimate
     # msg: PoseWithCovarianceStamped of our new reading (WORLD FRAME)
@@ -133,72 +88,62 @@ class CustomPose:
     def addPositionEstimate(self, msg, msg_camera_frame, confidence):
 
         # Debug 
-        rospy.loginfo_throttle(1, "Certainties: ({}%, {}%, {}%, {}%)" \
-            .format(self.confidence[0] * 100, self.confidence[1] * 100, self.confidence[2] * 100, self.confidence[3] * 100))
+        rospy.loginfo_throttle(2, "Covariances (x,y,z,yaw): ({}m^2, {}m^2, {}m^2, {}rad^2)" \
+            .format(self.covariance[0], self.covariance[1], self.covariance[2], self.covariance[3]))
+        rospy.loginfo_throttle(2, "Position (x,y,z,yaw): ({}m, {}m, {}m, {}rad)" \
+            .format(self.pos[0], self.pos[1], self.pos[2], self.yaw))
 
         # Filter out "false positives"
         # If we make it past this, we assume it's a true positive and is actually the object
-        if not self.isValidMeasurement(msg, confidence):
+        if not self.isValidMeasurement(msg, msg_camera_frame, confidence):
             return
 
+        rospy.loginfo("Got a valid measurement! {}".format(msg))
+
         # Update timestamp so it's the most recent routine 
-        self.time = rospy.get_rostime()
+        self.stamp = msg.header.stamp
 
         # Convenient aliases
-        msgPose = msg.pose.pose
-        msgCovariance = msg.pose.covariance
+        msg_pose = msg.pose.pose
+        msg_covariance = msg.pose.covariance
 
-        # print("addPositionEstimate()")
-        # print("Current Pose: {}".format(self.pose))
-        # print("Current Covariance: {}".format(self.covariance))
-        # print("Message Pose: {}".format(msgPose))
-        # print("Message Covariance: {}".format(msgCovariance))
+        # Update translational axes 
+        # Note that saved covariance is 4-Long List representing x/y/z/yaw whereas message covariance is a full 36-long array that we take the diagonal of 
+        self.pos[0], self.covariance[0] = self.update_value(self.pos[0], msg_pose.position.x, self.covariance[0], msg_covariance[0])
+        self.pos[1], self.covariance[1] = self.update_value(self.pos[1], msg_pose.position.x, self.covariance[1], msg_covariance[7])
+        self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.x, self.covariance[2], msg_covariance[14])
 
-        # Convert angles to euler
-        _, _, currYaw = euler_from_quaternion([self.pose.orientation.w, self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z])
-        _, _, msgYaw = euler_from_quaternion([msgPose.orientation.w, msgPose.orientation.x, msgPose.orientation.y, msgPose.orientation.z])
+        # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
+        _, _, msg_yaw = euler_from_quaternion([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w])
+        msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
+        self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], msg_covariance[35])
 
-        # Normalize the covariance array to [0, 1)
-        covariance_max = max(msgCovariance)
-        if covariance_max != 0:
-            for i in range(len(msgCovariance)):
-                msgCovariance[i] = msgCovariance[i] / covariance_max
-                msgCovariance[i] = (msgCovariance[i] + 1) / 2
-
-        # Update poses
-        self.pose.position.x, x_certaintychange = self.compareValues(self.pose.position.x, msgPose.position.x, self.confidence[0], 1 - msgCovariance[0]) # x
-        self.pose.position.y, y_certaintychange = self.compareValues(self.pose.position.y, msgPose.position.y, self.confidence[1], 1 - msgCovariance[7]) # y
-        self.pose.position.z, z_certaintychange = self.compareValues(self.pose.position.z, msgPose.position.z, self.confidence[2], 1 - msgCovariance[14]) # z
-        newYaw, yaw_certaintychange = self.compareValues(currYaw, msgYaw, self.confidence[3], 1 - msgCovariance[35]) # yaw
-
-        # Apply our certainty changes and clamp to [0, 1)
-        self.confidence[0] += x_certaintychange
-        self.confidence[1] += y_certaintychange
-        self.confidence[2] += z_certaintychange
-        self.confidence[3] += yaw_certaintychange
-
-        # Clamp to [0, 1)
-        self.confidence[0] = max(0, min(self.confidence[0], 1))
-        self.confidence[1] = max(0, min(self.confidence[0], 1))
-        self.confidence[2] = max(0, min(self.confidence[0], 1))
-        self.confidence[3] = max(0, min(self.confidence[0], 1))
-
-        # TODO: Update Covariances... it's something like this but there's probably a lot wrong with it 
-        # self.pose.position.x, self.covariance[0:6] = self.compareValues(self.pose.position.x, msgPose.position.x, self.covariance[0:6], msgCovariance[0:6]) # x
-        # self.pose.position.y, self.covariance[6:12] = self.compareValues(self.pose.position.y, msgPose.position.y, self.covariance[6:12], msgCovariance[6:12]) # y
-        # self.pose.position.z, self.covariance[12:18] = self.compareValues(self.pose.position.z, msgPose.position.z, self.covariance[12:18], msgCovariance[12:18]) # z
-
-        # Convert angles back to quaternions and update result  
-        self.pose.orientation.w, self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z = quaternion_from_euler(0, 0, newYaw)
-
-        # print("Ending Pose: {}".format(self.pose))
-        # print("Ending Covariance: {}".format(self.covariance))
+    def constrain_angle(self, angle1, angle2):
+        while angle2 > angle1 + pi:
+            angle2 -= 2*pi
+        while angle2 < angle1 - pi:
+            angle2 += 2*pi
+        return angle2
         
     # Compiles our representation into an object that we want 
     # return: PoseWithCovarianceStamped message (http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/PoseWithCovarianceStamped.html)
     def getPoseWithCovarianceStamped(self):
-        obj = PoseWithCovarianceStamped()
-        obj.pose.pose = self.pose
-        obj.pose.covariance = self.covariance
-        obj.header.stamp = self.time # Time Stamp
-        return obj
+
+        # Stamp 
+        output = PoseWithCovarianceStamped()
+        output.header.frame_id = "/world"
+        output.header.stamp = self.stamp
+
+        # Orientation
+        output.pose.pose.orientation = Quaternion(*quaternion_from_euler(0, 0, self.yaw))
+        output.pose.pose.position = Point(*self.pos)
+
+        # Covariance 
+        covariance = numpy.zeros((6, 6))
+        covariance[0, 0] = self.covariance[0]
+        covariance[1, 1] = self.covariance[1]
+        covariance[2, 2] = self.covariance[2]
+        covariance[3, 3] = self.covariance[3]
+        output.pose.covariance = covariance.flatten()
+
+        return output 
