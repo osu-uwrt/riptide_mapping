@@ -35,6 +35,8 @@ def poleCallback(msg):
     # Verify TF system is established
     try:
         (trans, rot) = tl.lookupTransform(worldFrame, cameraFrame, rospy.Time(0))
+        t = tl.getLatestCommonTime(worldFrame, cameraFrame)
+
     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
         return 
 
@@ -50,7 +52,6 @@ def poleCallback(msg):
         # We need to convert that to the world frame, which is what is used in our mapping system 
         # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
         # Transform the pose part 
-        t = tl.getLatestCommonTime(worldFrame, cameraFrame)
         p1 = PoseStamped()
         p1.header.frame_id = cameraFrame
         p1.header.stamp = t
@@ -76,7 +77,8 @@ def poleCallback(msg):
 
         # We do some error/reasonability checking with this
         reading_camera_frame = PoseWithCovarianceStamped()
-        reading_camera_frame.header = copy.deepcopy(msg.header)
+        reading_camera_frame.header.frame_id = cameraFrame
+        reading_camera_frame.header.stamp = t 
         reading_camera_frame.pose = result.pose
 
         # Merge the given position into our position for that object
@@ -90,7 +92,7 @@ def poleCallback(msg):
         pose = output_pose.pose.pose # Get the embedded geometry_msgs/Pose (we don't need timestamp/covariance)
         translation = (pose.position.x, pose.position.y, pose.position.z) # Needs to be a 3-tuple rather than an object
         rotation = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w) # Needs to be a 4-tuple rather than an object
-        time = rospy.get_rostime()
+        time = t
         child = name + "_frame"
         parent = "world"
         tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
@@ -199,5 +201,6 @@ if __name__ == '__main__':
     # Publishers
     for field in objects:
         objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
+        objects[field]["publisher"].publish(objects[field]["pose"].getPoseWithCovarianceStamped()) # Publish initial estimate
 
     rospy.spin()
