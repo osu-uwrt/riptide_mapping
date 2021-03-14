@@ -3,9 +3,9 @@
 objects:
 
   pole:
-    position: [0, 4, -2] # x/y/z
+    position: [0, 0, 0] # x/y/z
     yaw: 0 # Just yaw, we don't care about the other two; units DEGREES 
 
     # NOTE: If you want to say you are really sure, use .000001 instead of 0 to avoid divide-by-zero errors.
     # x,y,z,yaw covariances (higher = more uncertain); units m^2
-    covariance: [.5, .5, .000001, .000001]
+    covariance: [1.25, 1.25, .000001, .000001]

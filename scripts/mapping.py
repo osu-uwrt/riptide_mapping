@@ -10,7 +10,7 @@ from vision_msgs.msg import Detection3D
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from Pose import CustomPose
+from Estimate import Estimate
 from math import pi
 
 # Our overall data representation; each object has related information 
@@ -97,6 +97,7 @@ def poleCallback(msg):
 
 # Handles merging DOPE's output into our representation
 # msg: Detection3DArray (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3DArray.html)
+# TODO: We know pole_callback works. Adjust this to work. Should be as easy as copy-pasting pole_callback into the loop in here, as pole_callback takes in a Detection3D.
 def dopeCallback(msg):
     pass
 
@@ -159,20 +160,19 @@ def dopeCallback(msg):
             tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
 '''
 
-
 # Takes in an object and position data to produce an initial pose estimate,
 # confidence score, and associated covariance for the given object
 # 
 # param: object - object to get estimate of
 # param: data - parsed yaml object (ie yaml.load) of object data
-# returns: newPose - CustomPose object created from the initial data
+# returns: newPose - Estimate object created from the initial data
 # Load the object's information from data
 def initial_object_pose(object_name, data):
     object_position = data["position"]
     object_yaw = data["yaw"]
     object_covariance = data["covariance"] 
     object_covariance[3] *= pi / 180 # file uses degrees to be more human-readable, code uses rads
-    return CustomPose(object_position, object_yaw, object_covariance)
+    return Estimate(object_position, object_yaw, object_covariance)
     
 if __name__ == '__main__':
 
