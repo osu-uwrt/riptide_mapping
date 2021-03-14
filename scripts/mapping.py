@@ -170,7 +170,8 @@ def dopeCallback(msg):
 def initial_object_pose(object_name, data):
     object_position = data["position"]
     object_yaw = data["yaw"]
-    object_covariance = data["covariance"] * pi / 180 # file uses degrees to be more human-readable, code uses rads
+    object_covariance = data["covariance"] 
+    object_covariance[3] *= pi / 180 # file uses degrees to be more human-readable, code uses rads
     return CustomPose(object_position, object_yaw, object_covariance)
     
 if __name__ == '__main__':
@@ -183,7 +184,7 @@ if __name__ == '__main__':
     cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
 
     # Initial object data loaded from initial_object_data.yaml
-    initial_data_file = open(rospy.get_param("/puddles/mapping/initial_object_data"))
+    initial_data_file = open(rospy.get_param("~initial_object_data"))
     initial_data = yaml.load(initial_data_file, Loader=yaml.FullLoader)
     
     # For each of our objects, set an initial estimate of their pose

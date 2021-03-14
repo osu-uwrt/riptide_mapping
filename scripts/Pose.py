@@ -109,8 +109,8 @@ class CustomPose:
         # Update translational axes 
         # Note that saved covariance is 4-Long List representing x/y/z/yaw whereas message covariance is a full 36-long array that we take the diagonal of 
         self.pos[0], self.covariance[0] = self.update_value(self.pos[0], msg_pose.position.x, self.covariance[0], msg_covariance[0])
-        self.pos[1], self.covariance[1] = self.update_value(self.pos[1], msg_pose.position.x, self.covariance[1], msg_covariance[7])
-        self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.x, self.covariance[2], msg_covariance[14])
+        self.pos[1], self.covariance[1] = self.update_value(self.pos[1], msg_pose.position.y, self.covariance[1], msg_covariance[7])
+        self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.z, self.covariance[2], msg_covariance[14])
 
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
         _, _, msg_yaw = euler_from_quaternion([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w])
