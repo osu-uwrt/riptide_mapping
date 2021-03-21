@@ -5,8 +5,4 @@
   <node name="mapping" pkg="riptide_mapping" type="mapping.py" output="screen" >
     <param name="initial_object_data" type="string" value="$(find riptide_mapping)/cfg/initial_object_data.yaml" />
   </node>
-    <node pkg="rosbag" type="record" name="record_mapping" 
-            args="record -o $(env HOME)/rosbag_mapping
-            rosout_agg 
-            /puddles/mapping/pole" />
 </launch>
