@@ -86,8 +86,6 @@ class Estimate:
     # Confidence: [0, 1] score of how confident DOPE is that it is the object in question
     def addPositionEstimate(self, msg, msg_camera_frame, confidence):
 
-        rospy.logwarn("Facing " + str(self.yaw))
-        
         # Debug 
         rospy.loginfo_throttle(2, "Position (x,y,z,yaw): ({}m, {}m, {}m, {}rad)" \
             .format(self.pos[0], self.pos[1], self.pos[2], self.yaw))
