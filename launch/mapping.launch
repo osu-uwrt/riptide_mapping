@@ -1,4 +1,4 @@
 <launch>
   <arg name="namespace" default="puddles" doc="Namespace of the vehicle" />
-  <node name="mapping" pkg="riptide_mapping" type="mapping.py" ns="$(arg namespace)" />
+  <node name="mapping" pkg="riptide_mapping" type="mapping.py" />
 </launch>

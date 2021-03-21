@@ -39,17 +39,19 @@ def gazeboCallback(msg):
         obj.header.stamp.nsecs = now.nsecs
 
         # Actually publish, dependent on what the name was
-        if (msg.name[i] == "gate"):
+        if msg.name[i] == "pole":
+            polePub.publish(obj)
+        elif msg.name[i] == "gate":
             gatePub.publish(obj)
-        elif (msg.name[i] == "cutie"):
+        elif msg.name[i] == "cutie":
             cutiePub.publish(obj)
-        elif (msg.name[i] == "buoy"):
+        elif msg.name[i] == "buoy":
             buoyPub.publish(obj)
-        elif (msg.name[i] == "markers"):
+        elif msg.name[i] == "markers":
             markersPub.publish(obj)
-        elif (msg.name[i] == "torpedoes"):
+        elif msg.name[i] == "torpedoes":
             torpedoesPub.publish(obj)
-        elif (msg.name[i] == "retrieve"):
+        elif msg.name[i] == "retrieve":
             retrievePub.publish(obj)
         else:
             rospy.logerr("MAPPING ERROR: Tried to process something that isn't one of our props, but we haven't blacklisted! Object: " + msg.name[i])
@@ -84,5 +86,6 @@ if __name__ == '__main__':
     markersPub = rospy.Publisher("mapping/markers", PoseWithCovarianceStamped, queue_size=1) # Markers task
     torpedoesPub = rospy.Publisher("mapping/torpedoes", PoseWithCovarianceStamped, queue_size=1) # Manipulation/torpedoes task 
     retrievePub = rospy.Publisher("mapping/retrieve", PoseWithCovarianceStamped, queue_size=1) # Retrieve, surface, release task 
+    polePub = rospy.Publisher("mapping/pole", PoseWithCovarianceStamped, queue_size=1) # Retrieve, surface, release task 
 
     rospy.spin()
