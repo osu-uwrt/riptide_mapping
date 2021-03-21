@@ -5,7 +5,7 @@ from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Point
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from std_msgs.msg import Time
-from math import sqrt, pi
+from math import sqrt, pi, atan2
 from copy import deepcopy 
 import rospy 
 import numpy
@@ -18,7 +18,7 @@ class Estimate:
     # TODO: Probably cleaner to just use a PoseWithCovarianceStamped object rather than keeping the fields separate 
     def __init__(self, pos, yaw, cov):
         self.pos = pos # Length 3 List; x/y/z
-        self.yaw = yaw
+        self.yaw = (atan2(pos[0], pos[1]) + pi) % (2 * pi) # Rather than using initial estimate, should face towards robot (which starts at origin)
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = rospy.Time() # stamp/time
 
@@ -86,6 +86,8 @@ class Estimate:
     # Confidence: [0, 1] score of how confident DOPE is that it is the object in question
     def addPositionEstimate(self, msg, msg_camera_frame, confidence):
 
+        rospy.logwarn("Facing " + str(self.yaw))
+        
         # Debug 
         rospy.loginfo_throttle(2, "Position (x,y,z,yaw): ({}m, {}m, {}m, {}rad)" \
             .format(self.pos[0], self.pos[1], self.pos[2], self.yaw))
@@ -110,10 +112,13 @@ class Estimate:
         self.pos[1], self.covariance[1] = self.update_value(self.pos[1], msg_pose.position.y, self.covariance[1], msg_covariance[7])
         self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.z, self.covariance[2], msg_covariance[14])
 
+        # We essentially hardcode the initial yaw estimate for the pool test, but this should theoretically work 
+        '''
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
         _, _, msg_yaw = euler_from_quaternion([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w])
         msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
         self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], msg_covariance[35])
+        '''
 
     # When getting distance between angles, situations like angle1=20 and angle2=340 will return that there's 320deg between them, not 40. 
     # This essentially constraints that!

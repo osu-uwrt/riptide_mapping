@@ -171,8 +171,8 @@ def dopeCallback(msg):
 # Load the object's information from data
 def initial_object_pose(object_name, data):
     object_position = data["position"]
-    object_yaw = data["yaw"]
-    object_covariance = data["covariance"] 
+    object_yaw = 0 # TODO: For this pool test, we make pole face the robot rather than init from initial estimate
+    object_covariance = data["covariance"]
     object_covariance[3] *= pi / 180 # file uses degrees to be more human-readable, code uses rads
     return Estimate(object_position, object_yaw, object_covariance)
     
@@ -188,7 +188,16 @@ if __name__ == '__main__':
     # Initial object data loaded from initial_object_data.yaml
     initial_data_file = open(rospy.get_param("~initial_object_data"))
     initial_data = yaml.load(initial_data_file, Loader=yaml.FullLoader)
-    
+
+    '''
+    # Set pole to face towards origin 
+    # we wait for the transform then apply 180deg transform
+    tl.waitForTransform("/puddles/base_link", "/world", rospy.Time(), rospy.Duration(10))
+    trans, rot = tl.lookupTransform("/puddles/base_link", "/world", rospy.Time()) # lookupTransform returns xyzw
+    roll, pitch, yaw = tf.transformations.euler_from_quaternion([rot[3], rot[0], rot[1], rot[2]]) # euler_from_quaternion needs wxyz
+    yaw = (yaw + 180 * (pi / 180)) % (2 * pi) # Rotate yaw by 180deg
+    '''
+
     # For each of our objects, set an initial estimate of their pose
     for object_name,_ in initial_data["objects"].items():
         objects[object_name] = {} 
