@@ -3,7 +3,7 @@
 objects:
 
   pole:
-    position: [-4, 0, -2] # x/y/z
+    position: [8, 0, -.5] # x/y/z
     yaw: 0 # Just yaw, we don't care about the other two; units DEGREES 
 
     # NOTE: If you want to say you are really sure, use .000001 instead of 0 to avoid divide-by-zero errors.

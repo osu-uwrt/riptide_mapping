@@ -187,7 +187,7 @@ if __name__ == '__main__':
 
     # Initial object data loaded from initial_object_data.yaml
     initial_data_file = open(rospy.get_param("~initial_object_data"))
-    initial_data = yaml.load(initial_data_file, Loader=yaml.FullLoader)
+    initial_data = yaml.load(initial_data_file, Loader=yaml.Loader)
 
     '''
     # Set pole to face towards origin 
