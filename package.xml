@@ -26,7 +26,7 @@
   <run_depend>roscpp</run_depend>
   <run_depend>roslaunch</run_depend>
   <run_depend>python-numpy</run_depend>
-  <run_depend>yaml</run_depend>
+  <run_depend>python-yaml</run_depend>
 
   <export>
   </export>
