@@ -13,6 +13,9 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from Estimate import Estimate
 from math import pi
 
+from dynamic_reconfigure.server import Server
+from riptide_mapping.cfg import ObjectDataConfig
+
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
 objects = {}
@@ -169,13 +172,34 @@ def dopeCallback(msg):
 # param: data - parsed yaml object (ie yaml.load) of object data
 # returns: newPose - Estimate object created from the initial data
 # Load the object's information from data
-def initial_object_pose(object_name, data):
+def initialPoseCallback(object_name, data):
     object_position = data["position"]
     object_yaw = 0 # TODO: For this pool test, we make pole face the robot rather than init from initial estimate
     object_covariance = data["covariance"]
     object_covariance[3] *= pi / 180 # file uses degrees to be more human-readable, code uses rads
     return Estimate(object_position, object_yaw, object_covariance)
+
     
+
+def initialEstimateCallback(config, level):
+
+    # Iterate for as many groups there are in the config
+    for i in range(len(config['groups']['groups'])):
+        objectName = objectIDs[i]
+
+        object_position = [config['x_pos{}'.format(i+1)], config['y_pos{}'.format(i+1)], config['z_pos{}'.format(i+1)]]
+        object_yaw = config['yaw{}'.format(i+1)]
+        object_covariance = [config['x_cov{}'.format(i+1)], config['y_cov{}'.format(i+1)], config['z_cov{}'.format(i+1)], config['yaw{}'.format(i+1)]]
+        
+        objects[objectName] = {} 
+        objects[objectName]['pose'] = Estimate(object_position, object_yaw, object_covariance)
+
+        rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
+        rospy.loginfo("Yaw for {object} has been reconfigured: {newYaw}".format(object = objectName, newYaw = object_yaw))
+        rospy.loginfo("Covariance for {object} has been reconfigured: {newCov}".format(object = objectName, newCov = object_covariance))
+   
+    return config
+
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
@@ -186,8 +210,8 @@ if __name__ == '__main__':
     cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
 
     # Initial object data loaded from initial_object_data.yaml
-    initial_data_file = open(rospy.get_param("~initial_object_data"))
-    initial_data = yaml.load(initial_data_file, Loader=yaml.Loader)
+    #initial_data_file = open(rospy.get_param("~initial_object_data"))
+    #initial_data = yaml.load(initial_data_file, Loader=yaml.Loader)
 
     '''
     # Set pole to face towards origin 
@@ -197,12 +221,10 @@ if __name__ == '__main__':
     roll, pitch, yaw = tf.transformations.euler_from_quaternion([rot[3], rot[0], rot[1], rot[2]]) # euler_from_quaternion needs wxyz
     yaw = (yaw + 180 * (pi / 180)) % (2 * pi) # Rotate yaw by 180deg
     '''
+    
+    # Dynamic reconfiguration server
+    server = Server(ObjectDataConfig, initialEstimateCallback)
 
-    # For each of our objects, set an initial estimate of their pose
-    for object_name,_ in initial_data["objects"].items():
-        objects[object_name] = {} 
-        objects[object_name]["pose"] = initial_object_pose(object_name, initial_data["objects"][object_name])
-        
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
     rospy.Subscriber("pole_detection", Detection3D, poleCallback)
