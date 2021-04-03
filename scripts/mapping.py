@@ -170,9 +170,9 @@ def dopeCallback(msg):
 # returns: newPose - Estimate object created from the initial data
 # Load the object's information from data
 def initial_object_pose(object_name, data):
-    object_position = data["position"]
+    object_position = np.array(data["position"], float)
     object_yaw = 0 # TODO: For this pool test, we make pole face the robot rather than init from initial estimate
-    object_covariance = data["covariance"]
+    object_covariance = np.array(data["covariance"], float)
     object_covariance[3] *= pi / 180 # file uses degrees to be more human-readable, code uses rads
     return Estimate(object_position, object_yaw, object_covariance)
     
