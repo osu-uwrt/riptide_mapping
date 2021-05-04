@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import tf
@@ -14,11 +14,31 @@ from Estimate import Estimate
 from math import pi
 
 from dynamic_reconfigure.server import Server
-from riptide_mapping.cfg import ObjectDataConfig
+from riptide_mapping.cfg import MappingConfig
+
+#TODO:remove pprint...
+
+import pprint
+
+
+# Filter 
+
 
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
-objects = {}
+objects = {
+
+    "gate": {
+        "pose": None,
+        "publisher" : None
+    },
+
+    "pole":{
+        "pose": None,
+        "publisher" : None
+
+    }
+}
 
 # DOPE will likely give us a probability map, but it will be linked via IDs instead of names. This is how we translate.
 # We might be able to just make this an array unless the IDs we get from dope are not sequential for some reason.
@@ -181,24 +201,31 @@ def initialPoseCallback(object_name, data):
 
     
 
-def initialEstimateCallback(config, level):
+def reconfigCallback(config, level):
 
-    # Iterate for as many groups there are in the config
-    for i in range(len(config['groups']['groups'])):
-        objectName = objectIDs[i]
+    pprint.pprint(config)
 
-        object_position = [config['x_pos{}'.format(i+1)], config['y_pos{}'.format(i+1)], config['z_pos{}'.format(i+1)]]
-        object_yaw = config['yaw{}'.format(i+1)]
-        object_covariance = [config['x_cov{}'.format(i+1)], config['y_cov{}'.format(i+1)], config['z_cov{}'.format(i+1)], config['yaw{}'.format(i+1)]]
-        
-        objects[objectName] = {} 
-        objects[objectName]['pose'] = Estimate(object_position, object_yaw, object_covariance)
+    # TODO: Handle reconfig for the initial estimate 
+    objectGroups = config["groups"]["groups"]["Objects"]["groups"]
+    for objectName in objectGroups:
+        objectName = objectName.lower()
+
+        object_position = [config['{}_x_pos'.format(objectName)], config['{}_y_pos'.format(objectName)], config['{}_z_pos'.format(objectName)]]
+        object_yaw = config['{}_yaw'.format(objectName)]
+        object_covariance = [config['{}_x_cov'.format(objectName)], config['{}_y_cov'.format(objectName)], config['{}_z_cov'.format(objectName)], config['{}_yaw_cov'.format(objectName)]]
+        objects[objectName]["pose"] = Estimate(object_position, object_yaw, object_covariance)
 
         rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
         rospy.loginfo("Yaw for {object} has been reconfigured: {newYaw}".format(object = objectName, newYaw = object_yaw))
         rospy.loginfo("Covariance for {object} has been reconfigured: {newCov}".format(object = objectName, newCov = object_covariance))
-   
+
+
+    # TODO: Handle reconfig for the filter variables
+    filterGroup = config["groups"]["groups"]["Filter"]
+
     return config
+
+   
 
 if __name__ == '__main__':
 
@@ -223,8 +250,8 @@ if __name__ == '__main__':
     '''
     
     # Dynamic reconfiguration server
-    server = Server(ObjectDataConfig, initialEstimateCallback)
-
+    server = Server(MappingConfig,reconfigCallback)
+    
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
     rospy.Subscriber("pole_detection", Detection3D, poleCallback)

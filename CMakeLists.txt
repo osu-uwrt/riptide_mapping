@@ -24,7 +24,7 @@ find_package(catkin REQUIRED
 
 # NOTE: Used for dynamic reconfiguration of the mapping system
 generate_dynamic_reconfigure_options(
-  cfg/ObjectData.cfg
+  cfg/Mapping.cfg
 )
 
 catkin_package(

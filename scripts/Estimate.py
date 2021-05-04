@@ -12,6 +12,9 @@ import numpy
 
 DEG_TO_RAD = pi / 180
 
+# Filter variables
+stdevCutoff = 1
+
 # Custom pose class that has commonly used mapping functionality 
 class Estimate:
 
@@ -53,10 +56,11 @@ class Estimate:
         #     return False
         # TODO: Probably a way to factor in the message's covariance into this calculation as well. While the pole detector essentially gives us constant covariance for detections, we want super confident estimates to be rejected less. 
         # If estimate is outside of one standard deviation of our estimate mean, ignore it
-        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * 1:
+        rospy.loginfo("-- Checking standard deviation with a cutoff of " + str(stdevCutoff) + " deviation(s) --")
+        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * stdevCutoff:
             rospy.logdebug("Rejecting due to being unlikely (x-direction)")
             return False
-        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * 1:
+        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * stdevCutoff:
             rospy.logdebug("Rejecting due to being unlikely (y-direction)")
             return False 
 
