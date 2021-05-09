@@ -215,14 +215,21 @@ def reconfigCallback(config, level):
         object_covariance = [config['{}_x_cov'.format(objectName)], config['{}_y_cov'.format(objectName)], config['{}_z_cov'.format(objectName)], config['{}_yaw_cov'.format(objectName)]]
         objects[objectName]["pose"] = Estimate(object_position, object_yaw, object_covariance)
 
+        objects[objectName]["pose"].setStdevCutoff(config['stdevCutoff'])
+        objects[objectName]["pose"].setAngleCutoff(config['angleCutoff'])
+
+        rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
+
+
         rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
         rospy.loginfo("Yaw for {object} has been reconfigured: {newYaw}".format(object = objectName, newYaw = object_yaw))
         rospy.loginfo("Covariance for {object} has been reconfigured: {newCov}".format(object = objectName, newCov = object_covariance))
 
 
-    # TODO: Handle reconfig for the filter variables
-    filterGroup = config["groups"]["groups"]["Filter"]
+    rospy.loginfo("Standard deviation cutoff has been reconfigured: {stdevCutoff}".format(stdevCutoff = config['stdevCutoff']))
+    rospy.loginfo("Angle cutoff has been reconfigured: {angleCutoff}".format(angleCutoff = config['angleCutoff']))
 
+    
     return config
 
    
