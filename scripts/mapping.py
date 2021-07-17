@@ -139,7 +139,7 @@ def dopeCallback(msg):
             # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
             # We need to convert that to the world frame, which is what is used in our mapping system 
             # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
-            worldFrame = "/world"
+            worldFrame = "world"
             cameraFrame = "{}stereo/left_link".format(rospy.get_namespace())
             convertedPos = None
             if transformer.frameExists(worldFrame) and transformer.frameExists(cameraFrame):
@@ -225,8 +225,8 @@ if __name__ == '__main__':
     '''
     # Set pole to face towards origin 
     # we wait for the transform then apply 180deg transform
-    tl.waitForTransform("/puddles/base_link", "/world", rospy.Time(), rospy.Duration(10))
-    trans, rot = tl.lookupTransform("/puddles/base_link", "/world", rospy.Time()) # lookupTransform returns xyzw
+    tl.waitForTransform("puddles/base_link", "world", rospy.Time(), rospy.Duration(10))
+    trans, rot = tl.lookupTransform("puddles/base_link", "world", rospy.Time()) # lookupTransform returns xyzw
     roll, pitch, yaw = tf.transformations.euler_from_quaternion([rot[3], rot[0], rot[1], rot[2]]) # euler_from_quaternion needs wxyz
     yaw = (yaw + 180 * (pi / 180)) % (2 * pi) # Rotate yaw by 180deg
     '''
