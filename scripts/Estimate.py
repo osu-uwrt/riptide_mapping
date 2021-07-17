@@ -148,7 +148,7 @@ class Estimate:
 
         # Stamp 
         output = PoseWithCovarianceStamped()
-        output.header.frame_id = "/world"
+        output.header.frame_id = "world"
         output.header.stamp = self.stamp
 
         # Orientation
@@ -163,4 +163,4 @@ class Estimate:
         covariance[3, 3] = self.covariance[3]
         output.pose.covariance = covariance.flatten()
 
-        return output 
+        return output

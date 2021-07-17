@@ -182,10 +182,10 @@ def dopeCallback(msg):
 def reconfigCallback(config, level):
 
     objectGroups = config["groups"]["groups"]["Objects"]["groups"]
-    for objectName in objectGroups:
+    for objectName in objectGroups: # Checking EVERY object that could have been reconfigured.
         objectName = objectName.lower()
 
-        # Update pose for each individual object
+        # Get pose data from reconfig and update our map accordingly
         object_position = [config['{}_x_pos'.format(objectName)], config['{}_y_pos'.format(objectName)], config['{}_z_pos'.format(objectName)]]
         object_yaw = config['{}_yaw'.format(objectName)]
         object_covariance = [config['{}_x_cov'.format(objectName)], config['{}_y_cov'.format(objectName)], config['{}_z_cov'.format(objectName)], config['{}_yaw_cov'.format(objectName)]]
@@ -194,15 +194,23 @@ def reconfigCallback(config, level):
         # Update filter 
         objects[objectName]["pose"].setStdevCutoff(config['stdevCutoff'])
         objects[objectName]["pose"].setAngleCutoff(config['angleCutoff'])
+        
+        # Publish reconfigured data
+        objects[objectName]["publisher"].publish(objects[objectName]["pose"].getPoseWithCovarianceStamped())
 
+        # Console output (uncomment for debugging)
+        '''
         rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
         rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
         rospy.loginfo("Yaw for {object} has been reconfigured: {newYaw}".format(object = objectName, newYaw = object_yaw))
         rospy.loginfo("Covariance for {object} has been reconfigured: {newCov}".format(object = objectName, newCov = object_covariance))
+        '''
 
+    # Console output (uncomment for debugging)
+    '''
     rospy.loginfo("Standard deviation cutoff has been reconfigured: {stdevCutoff}".format(stdevCutoff = config['stdevCutoff']))
     rospy.loginfo("Angle cutoff has been reconfigured: {angleCutoff}".format(angleCutoff = config['angleCutoff']))
-    
+    '''
     return config
 
 if __name__ == '__main__':
@@ -211,7 +219,7 @@ if __name__ == '__main__':
 
     # "class" variables 
     tl = tf.TransformListener()
-    worldFrame = "/world"
+    worldFrame = "world"
     cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
 
     '''
@@ -223,16 +231,19 @@ if __name__ == '__main__':
     yaw = (yaw + 180 * (pi / 180)) % (2 * pi) # Rotate yaw by 180deg
     '''
     
-    # Dynamic reconfiguration server
-    server = Server(MappingConfig,reconfigCallback)
-    
+    # Creating publishers
+    for field in objects:
+        objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
+        
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
     rospy.Subscriber("pole_detection", Detection3D, poleCallback)
 
-    # Publishers
-    for field in objects:
-        objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
-        objects[field]["publisher"].publish(objects[field]["pose"].getPoseWithCovarianceStamped()) # Publish initial estimate
+    # Dynamic reconfiguration server
+    server = Server(MappingConfig,reconfigCallback)
 
     rospy.spin()
+    
+   
+
+    
