@@ -10,6 +10,7 @@ add_compile_options(-std=c++11)
 # NOTE: To include OpenCV, must do find_package(OpenCV REQUIRED), followed by
 # include_directories(...)
 
+
 find_package(catkin REQUIRED
     COMPONENTS
     rospy
@@ -17,7 +18,20 @@ find_package(catkin REQUIRED
     roslint
     sensor_msgs
     vision_msgs
+    dynamic_reconfigure
 )
+
+# NOTE: Used for dynamic reconfiguration of the mapping system
+generate_dynamic_reconfigure_options(
+  cfg/Mapping.cfg
+)
+
+catkin_package(
+  CATKIN_DEPENDS
+    dynamic_reconfigure
+)
+
+include_directories(${catkin_INCLUDE_DIRS})
 
 # catkin_package(INCLUDE_DIRS include)
 

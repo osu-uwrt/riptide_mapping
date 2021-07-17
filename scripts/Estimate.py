@@ -11,6 +11,9 @@ import rospy
 import numpy
 
 DEG_TO_RAD = pi / 180
+ORIGIN_DEVIATION_LIMIT = 500
+# Filter variables
+stdevCutoff = 1
 
 # Custom pose class that has commonly used mapping functionality 
 class Estimate:
@@ -21,6 +24,17 @@ class Estimate:
         self.yaw = (atan2(pos[1], pos[0]) + (2 * pi)) % (2 * pi) # Rather than using initial estimate, should face towards robot (which starts at origin)
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = rospy.Time() # stamp/time
+
+        self.stdevCutoff = 1 # number of standard deviations
+        self.angleCutoff = 15 # units: degrees
+
+    # setter for the standard deviation cutoff
+    def setStdevCutoff(self,value):
+        self.stdevCutoff = value
+
+    # setter for the angle cutoff
+    def setAngleCutoff(self,value):
+        self.angleCutoff = value
 
     # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
     # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
@@ -34,15 +48,15 @@ class Estimate:
         _, _, self_yaw = euler_from_quaternion(self_quat)
 
         # Reject anything that is too far from the origin (i.e. outside transdec)
-        if msg.pose.pose.position.x >= 500 or msg.pose.pose.position.x <= -500 or \
-            msg.pose.pose.position.y >= 500 or msg.pose.pose.position.y <= -500 or \
-            msg.pose.pose.position.z >= 500 or msg.pose.pose.position.z <= -500:
+        if msg.pose.pose.position.x >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.x <= -ORIGIN_DEVIATION_LIMIT or \
+            msg.pose.pose.position.y >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.y <= -ORIGIN_DEVIATION_LIMIT or \
+            msg.pose.pose.position.z >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.z <= -ORIGIN_DEVIATION_LIMIT:
             rospy.logdebug("Rejecting due to being too far from the origin.")
             return False
 
         # Reject anything that isn't reasonably flat 
-        if msg_roll <= -15 * DEG_TO_RAD or msg_roll >= 15 * DEG_TO_RAD or \
-            msg_pitch <= -15 * DEG_TO_RAD or msg_pitch >= 15 * DEG_TO_RAD:
+        if msg_roll <= -self.angleCutoff * DEG_TO_RAD or msg_roll >= self.angleCutoff * DEG_TO_RAD or \
+            msg_pitch <= -self.angleCutoff * DEG_TO_RAD or msg_pitch >= self.angleCutoff * DEG_TO_RAD:
             rospy.logdebug("Rejecting due to having abnormal roll/pitch.")
             return False 
 
@@ -53,10 +67,11 @@ class Estimate:
         #     return False
         # TODO: Probably a way to factor in the message's covariance into this calculation as well. While the pole detector essentially gives us constant covariance for detections, we want super confident estimates to be rejected less. 
         # If estimate is outside of one standard deviation of our estimate mean, ignore it
-        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * 1:
+        rospy.loginfo("-- Checking standard deviation with a cutoff of " + str(self.stdevCutoff) + " deviation(s) --")
+        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * self.stdevCutoff:
             rospy.logdebug("Rejecting due to being unlikely (x-direction)")
             return False
-        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * 1:
+        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * self.stdevCutoff:
             rospy.logdebug("Rejecting due to being unlikely (y-direction)")
             return False 
 
@@ -148,4 +163,4 @@ class Estimate:
         covariance[3, 3] = self.covariance[3]
         output.pose.covariance = covariance.flatten()
 
-        return output 
+        return output

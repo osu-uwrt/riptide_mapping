@@ -13,9 +13,24 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from Estimate import Estimate
 from math import pi
 
+from dynamic_reconfigure.server import Server
+from riptide_mapping.cfg import MappingConfig
+
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
-objects = {}
+objects = {
+
+    "gate": {
+        "pose": None,
+        "publisher" : None
+    },
+
+    "pole":{
+        "pose": None,
+        "publisher" : None
+
+    }
+}
 
 # DOPE will likely give us a probability map, but it will be linked via IDs instead of names. This is how we translate.
 # We might be able to just make this an array unless the IDs we get from dope are not sequential for some reason.
@@ -161,21 +176,43 @@ def dopeCallback(msg):
             parent = "world"
             tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
 '''
+# Handles reconfiguration for the mapping system.
+# TODO: In the future, we should only update the initial estimates of objects that have been reconfigured instead of 
+# indiscriminately updating everything regardless of whether or not they were actually reconfigured.
+def reconfigCallback(config, level):
 
-# Takes in an object and position data to produce an initial pose estimate,
-# confidence score, and associated covariance for the given object
-# 
-# param: object - object to get estimate of
-# param: data - parsed yaml object (ie yaml.load) of object data
-# returns: newPose - Estimate object created from the initial data
-# Load the object's information from data
-def initial_object_pose(object_name, data):
-    object_position = np.array(data["position"], float)
-    object_yaw = 0 # TODO: For this pool test, we make pole face the robot rather than init from initial estimate
-    object_covariance = np.array(data["covariance"], float)
-    object_covariance[3] *= pi / 180 # file uses degrees to be more human-readable, code uses rads
-    return Estimate(object_position, object_yaw, object_covariance)
-    
+    objectGroups = config["groups"]["groups"]["Objects"]["groups"]
+    for objectName in objectGroups: # Checking EVERY object that could have been reconfigured.
+        objectName = objectName.lower()
+
+        # Get pose data from reconfig and update our map accordingly
+        object_position = [config['{}_x_pos'.format(objectName)], config['{}_y_pos'.format(objectName)], config['{}_z_pos'.format(objectName)]]
+        object_yaw = config['{}_yaw'.format(objectName)]
+        object_covariance = [config['{}_x_cov'.format(objectName)], config['{}_y_cov'.format(objectName)], config['{}_z_cov'.format(objectName)], config['{}_yaw_cov'.format(objectName)]]
+        objects[objectName]["pose"] = Estimate(object_position, object_yaw, object_covariance)
+
+        # Update filter 
+        objects[objectName]["pose"].setStdevCutoff(config['stdevCutoff'])
+        objects[objectName]["pose"].setAngleCutoff(config['angleCutoff'])
+        
+        # Publish reconfigured data
+        objects[objectName]["publisher"].publish(objects[objectName]["pose"].getPoseWithCovarianceStamped())
+
+        # Console output (uncomment for debugging)
+        '''
+        rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
+        rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
+        rospy.loginfo("Yaw for {object} has been reconfigured: {newYaw}".format(object = objectName, newYaw = object_yaw))
+        rospy.loginfo("Covariance for {object} has been reconfigured: {newCov}".format(object = objectName, newCov = object_covariance))
+        '''
+
+    # Console output (uncomment for debugging)
+    '''
+    rospy.loginfo("Standard deviation cutoff has been reconfigured: {stdevCutoff}".format(stdevCutoff = config['stdevCutoff']))
+    rospy.loginfo("Angle cutoff has been reconfigured: {angleCutoff}".format(angleCutoff = config['angleCutoff']))
+    '''
+    return config
+
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
@@ -185,10 +222,6 @@ if __name__ == '__main__':
     worldFrame = "world"
     cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
 
-    # Initial object data loaded from initial_object_data.yaml
-    initial_data_file = open(rospy.get_param("~initial_object_data"))
-    initial_data = yaml.load(initial_data_file, Loader=yaml.Loader)
-
     '''
     # Set pole to face towards origin 
     # we wait for the transform then apply 180deg transform
@@ -197,19 +230,20 @@ if __name__ == '__main__':
     roll, pitch, yaw = tf.transformations.euler_from_quaternion([rot[3], rot[0], rot[1], rot[2]]) # euler_from_quaternion needs wxyz
     yaw = (yaw + 180 * (pi / 180)) % (2 * pi) # Rotate yaw by 180deg
     '''
-
-    # For each of our objects, set an initial estimate of their pose
-    for object_name,_ in initial_data["objects"].items():
-        objects[object_name] = {} 
-        objects[object_name]["pose"] = initial_object_pose(object_name, initial_data["objects"][object_name])
+    
+    # Creating publishers
+    for field in objects:
+        objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
         
     # Subscribers
     rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
     rospy.Subscriber("pole_detection", Detection3D, poleCallback)
 
-    # Publishers
-    for field in objects:
-        objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
-        objects[field]["publisher"].publish(objects[field]["pose"].getPoseWithCovarianceStamped()) # Publish initial estimate
+    # Dynamic reconfiguration server
+    server = Server(MappingConfig,reconfigCallback)
 
     rospy.spin()
+    
+   
+
+    
