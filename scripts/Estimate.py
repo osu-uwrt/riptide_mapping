@@ -51,14 +51,15 @@ class Estimate:
         if msg.pose.pose.position.x >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.x <= -ORIGIN_DEVIATION_LIMIT or \
             msg.pose.pose.position.y >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.y <= -ORIGIN_DEVIATION_LIMIT or \
             msg.pose.pose.position.z >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.z <= -ORIGIN_DEVIATION_LIMIT:
-            rospy.logdebug("Rejecting due to being too far from the origin.")
+            rospy.loginfo("Rejecting due to being too far from the origin.")
             return False
-
+        '''
         # Reject anything that isn't reasonably flat 
         if msg_roll <= -self.angleCutoff * DEG_TO_RAD or msg_roll >= self.angleCutoff * DEG_TO_RAD or \
             msg_pitch <= -self.angleCutoff * DEG_TO_RAD or msg_pitch >= self.angleCutoff * DEG_TO_RAD:
-            rospy.logdebug("Rejecting due to having abnormal roll/pitch.")
-            return False 
+            rospy.loginfo("Rejecting due to having abnormal roll/pitch.")
+            return False '''
+        
 
         # TODO: Implement yaw check 
         # TODO: z-check will matter for competition, we just disabled it to test with the pole for pool tests. Put it back in.
@@ -69,10 +70,10 @@ class Estimate:
         # If estimate is outside of one standard deviation of our estimate mean, ignore it
         rospy.loginfo("-- Checking standard deviation with a cutoff of " + str(self.stdevCutoff) + " deviation(s) --")
         if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * self.stdevCutoff:
-            rospy.logdebug("Rejecting due to being unlikely (x-direction)")
+            rospy.loginfo("Rejecting due to being unlikely (x-direction)")
             return False
         if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * self.stdevCutoff:
-            rospy.logdebug("Rejecting due to being unlikely (y-direction)")
+            rospy.loginfo("Rejecting due to being unlikely (y-direction)")
             return False 
 
         # TODO: We want to reject unconfident guesses. Currently disabled, as the pole detector just sets this to zero; reenable it.

@@ -2,14 +2,13 @@
 
 import rospy
 import tf
-import yaml
+import tf2_ros
 import numpy as np
-import copy 
+import copy
+from tf2_ros.buffer_interface import convert 
 from vision_msgs.msg import Detection3DArray
-from vision_msgs.msg import Detection3D
-from geometry_msgs.msg import Pose
-from geometry_msgs.msg import PoseStamped
-from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
+from tf2_geometry_msgs import PoseStamped
 from Estimate import Estimate
 from math import pi
 
@@ -36,11 +35,10 @@ objects = {
     }
 }
 
-# DOPE will likely give us a probability map, but it will be linked via IDs instead of names. This is how we translate.
-# We might be able to just make this an array unless the IDs we get from dope are not sequential for some reason.
+# Used to translate between DOPE ids and names of objects
 objectIDs = {
-    0 : "pole",
-    1 : "gate", 
+    0 : "gate",
+    1 : "cutie", 
     2 : "buoy", 
     3 : "markers", 
     4 : "torpedoes", 
@@ -50,8 +48,7 @@ objectIDs = {
 # Handles merging DOPE's output into our representation
 # msg: Detection3DArray (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3DArray.html)
 # TODO: We know pole_callback works. Adjust this to work. Should be as easy as copy-pasting pole_callback into the loop in here, as pole_callback takes in a Detection3D.
-def dopeCallback(msg):
-
+def dopeCallback(msg):    
     # Context: This loop will run <number of different objects DOPE thinks it sees on screen> times
     # `detection` is of type Detection3D (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
     for detection in msg.detections:
@@ -59,45 +56,66 @@ def dopeCallback(msg):
         # Note that we don't change the first loop to `detection in msg.detections.results` because we want the timestamp from the Detection3D object
         # Context: This loop will run <number of objects DOPE can identify> times 
         # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
-        for result in detection.results: 
-
-
+        for result in detection.results:
+            
             # NOTE: Rather than decide here if it meets our threshold for adding an estimate, the cleaner way to do it is
             # to just pass it over regardless. addPositionEstimate will simply barely change our estimate if our certainty is low.
 
             # Translate the ID that DOPE gives us to a name meaningful to us
             name = objectIDs[result.id]
-
+        
             # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
             # We need to convert that to the world frame, which is what is used in our mapping system 
             # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
             worldFrame = "world"
-            cameraFrame = "{}stereo/left_link".format(rospy.get_namespace())
-            convertedPos = None
-            if tl.frameExists(worldFrame) and tl.frameExists(cameraFrame):
-                t = tl.getLatestCommonTime(worldFrame, cameraFrame)
+            cameraFrame = "puddles/stereo/left_link"
+
+            convertedPose = None
+            if tf_buffer.can_transform(worldFrame,cameraFrame,rospy.Time()):
+                t = rospy.Time(0)
                 rospy.logwarn_throttle(1, "t: " + str(t))
-                p1 = PoseStamped()
+                p1 = PoseStamped() # tf2 geometry message
                 p1.header.frame_id = cameraFrame
                 p1.header.stamp = t
                 p1.pose = result.pose.pose
                 rospy.logwarn_throttle(1, "p1: " + str(p1))
-                convertedPos = tl.transformPose(worldFrame, p1)
+                convertedPose = tf_buffer.transform(p1, worldFrame)
+                
             else:
                 rospy.logerr_throttle(1, "ERROR: Mapping was unable to find /world and {}stereo/left_link frames!".format(rospy.get_namespace()))
+            
+            # Get covariance from score
+            msg_covariance = scoreToCov(result.score)
 
+            # Reconstruct a pose with covariance stamped message from transformed pose and original covariance
+            object_message = PoseWithCovarianceStamped()
+            object_message.header.frame_id = worldFrame
+            object_message.header.stamp = rospy.Time.now()
+            object_message.pose.pose = convertedPose.pose
 
-            # poseMsg = PoseStamped()
-            # poseMsg.header = detection.header # tf transforms need a PoseStamped, not a PoseWithCovarianceStamped like we have
-            # poseMsg.pose = result.pose.pose
-            # convertedPos = tl.transformPose("world", pose)
+            object_message.pose.covariance[0] = msg_covariance[0] # X covariance
+            object_message.pose.covariance[7] = msg_covariance[1] # Y covariance
+            object_message.pose.covariance[14] = msg_covariance[2] # Z covariance
+            object_message.pose.covariance[35] = msg_covariance[3] # Yaw covariance
+
+            rospy.loginfo("Message Covariance: {}".format(result.pose.covariance))
+
+            # Used for error checking
+            reading_camera_frame = PoseWithCovarianceStamped()
+            reading_camera_frame.header.frame_id = cameraFrame
+            reading_camera_frame.header.stamp = rospy.Time.now()
+            reading_camera_frame.pose.pose = result.pose.pose
+            reading_camera_frame.pose.covariance = result.pose.covariance
+
+            score = result.score
 
             # Merge the given position into our position for that object
-            objects[name]["pose"].addPositionEstimate(convertedPos)
+            objects[name]["pose"].addPositionEstimate(object_message, reading_camera_frame, score)
 
             # Publish that object's data out 
             poseStamped = objects[name]["pose"].getPoseWithCovarianceStamped()
             objects[name]["publisher"].publish(poseStamped)
+            
 
             # Publish /tf data for the given object 
             pose = poseStamped.pose.pose # Get the embedded geometry_msgs/Pose (we don't need timestamp/covariance)
@@ -145,22 +163,26 @@ def reconfigCallback(config, level):
     '''
     return config
 
+# Very simple conversion from DOPE score to covariance
+def scoreToCov(score):
+    cov = 1 - score # The lower the covariance, the more sure the system is. Basically just invert the score value
+    covariance = [cov, cov, cov, cov] # x, y , z, yaw
+    return covariance
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
-
+    
     # "class" variables 
-    tl = tf.TransformListener()
-    worldFrame = "world"
-    cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
+    tf_buffer = tf2_ros.Buffer()
+    tl = tf2_ros.TransformListener(tf_buffer)
 
     # Creating publishers
     for field in objects:
         objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
         
     # Subscribers
-    rospy.Subscriber("/dope/detected_objects", Detection3DArray, dopeCallback) # DOPE's information 
-    
+    rospy.Subscriber("{}dope/detected_objects".format(rospy.get_namespace()), Detection3DArray, dopeCallback) # DOPE's information 
+
     # Dynamic reconfiguration server
     server = Server(MappingConfig,reconfigCallback)
 
