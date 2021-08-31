@@ -27,6 +27,7 @@ class Estimate:
 
         self.stdevCutoff = 1 # number of standard deviations
         self.angleCutoff = 15 # units: degrees
+        self.covLimit = 0.01 # covariance value units: m^2
 
     # setter for the standard deviation cutoff
     def setStdevCutoff(self,value):
@@ -35,6 +36,10 @@ class Estimate:
     # setter for the angle cutoff
     def setAngleCutoff(self,value):
         self.angleCutoff = value
+    
+    # setter for the covariance limit
+    def setCovLimit(self,value):
+        self.covLimit = value
 
     # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
     # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
@@ -94,6 +99,10 @@ class Estimate:
     def update_value(self, val1, val2, cov1, cov2):
         new_mean = (val1 * cov2 + val2 * cov1) / (cov1 + cov2)
         new_cov = (cov1 * cov2) / (cov1 + cov2)
+
+        # Ensure that covariance does not drop below the covariance threshold.
+        if(new_cov < self.covLimit):
+            new_cov = self.covLimit
         return new_mean, new_cov 
 
     # Takes in a new DOPE reading and updates our estimate
