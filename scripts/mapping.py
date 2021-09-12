@@ -17,36 +17,44 @@ from riptide_mapping.cfg import MappingConfig
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
 objects = {
-
-    "cutie": {
-        "pose": None,
+    "cutie": { # Old game object used for testing
+        "pose": None, 
         "publisher" : None
+    },
+    "tommy": { # Tommygun game object.
+        "pose":None,
+        "publisher": None
+    },
+    "gman": { # GMan game object.
+        "pose":None,
+        "publisher": None
+    },
+    "bootlegger": { # Bootlegger game object.
+        "pose":None,
+        "publisher": None
+    },
+    "badge": { # Badge game object.
+        "pose":None,
+        "publisher": None
     },
     "gate": {
         "pose": None,
         "publisher" : None
     },
-
-    "pole":{
-        "pose": None,
-        "publisher" : None
-
-    }
 }
 
 # Used to translate between DOPE ids and names of objects
-objectIDs = {
+object_ids = {
     0 : "gate",
     1 : "cutie", 
-    2 : "buoy", 
-    3 : "markers", 
-    4 : "torpedoes", 
-    5 : "retrieve", 
+    2 : "tommy", 
+    3 : "gman", 
+    4 : "bootlegger", 
+    5 : "badge", 
 }
 
 # Handles merging DOPE's output into our representation
 # msg: Detection3DArray (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3DArray.html)
-# TODO: We know pole_callback works. Adjust this to work. Should be as easy as copy-pasting pole_callback into the loop in here, as pole_callback takes in a Detection3D.
 def dopeCallback(msg):    
     # Context: This loop will run <number of different objects DOPE thinks it sees on screen> times
     # `detection` is of type Detection3D (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
@@ -66,7 +74,7 @@ def dopeCallback(msg):
         for result in detection.results: 
 
             # Translate the ID that DOPE gives us to a name meaningful to us
-            name = objectIDs[result.id]
+            name = object_ids[result.id]
 
             # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
             # We need to convert that to the world frame, which is what is used in our mapping system 
@@ -145,9 +153,9 @@ def reconfigCallback(config, level):
         objects[objectName]["pose"] = Estimate(object_position, object_yaw, object_covariance)
 
         # Update filter 
-        objects[objectName]["pose"].setStdevCutoff(config['stdevCutoff'])
-        objects[objectName]["pose"].setAngleCutoff(config['angleCutoff'])
-        objects[objectName]["pose"].setCovLimit(config['covLimit'])
+        objects[objectName]["pose"].setStdevCutoff(config['stdev_cutoff'])
+        objects[objectName]["pose"].setAngleCutoff(config['angle_cutoff'])
+        objects[objectName]["pose"].setCovLimit(config['cov_limit'])
         
         # Publish reconfigured data
         objects[objectName]["publisher"].publish(objects[objectName]["pose"].getPoseWithCovarianceStamped())
