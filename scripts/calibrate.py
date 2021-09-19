@@ -15,13 +15,13 @@ from tf.transformations import euler_from_quaternion
 from tf2_geometry_msgs import PoseStamped
 
 # The number of samples to collect before calculating the variances
-maxSamples = 100
+maxSamples = 0
 
 # Certainty threshold
-minCertainty = 0.50
+minCertainty = 1.0
 
 # Target we are doing a covariance calibration for
-targetName = "cutie"
+targetName = ""
 
 # Used to translate between DOPE ids and names of objects
 objectIDs = {
@@ -54,20 +54,22 @@ def detectionCallback(msg):
                 (trans, rot) = tl.lookupTransform(worldFrame, cameraFrame, rospy.Time(0))
                 t = tl.getLatestCommonTime(worldFrame, cameraFrame)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                print("TF check failed")
+                rospy.logwarn("TF check failed")
                 return 
 
             # Note that we don't change the first loop to `detection in msg.detections.results` because we want the timestamp from the Detection3D object
             # Context: This loop will run <number of objects DOPE can identify> times 
             # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
             for result in detection.results:
+
                 # Translate the ID that DOPE gives us to a name meaningful to us
                 name = objectIDs[result.id]
 
-                print("adding sample {} for {}".format(len(samples), name))
-
                 # Save a new sample if it meets the critereia
                 if(name == targetName and result.score >= minCertainty):
+
+                    if(len(samples) % int(maxSamples / 10.0) == 0):
+                        rospy.loginfo("Adding sample {} for {}".format(len(samples), name))
 
                     # convert from camera frame to world frame
                     p1 = PoseStamped()
@@ -80,7 +82,7 @@ def detectionCallback(msg):
                     samples.append(copy.deepcopy(convertedPos.pose))
 
     elif(not covarSaved):
-        print("computing variances")
+        rospy.loginfo("Data collection complete.\nCalculating vision system variance")
 
         # We have enough data to run statistics now
         xData = []
@@ -107,29 +109,35 @@ def detectionCallback(msg):
         zVar = float(statistics.variance(zData))
         yawVar = float(statistics.variance(yawData))
 
-        # Save variances to yaml file in cfg
-        with open(fileName, 'w') as fs:
-            covarianceData = {}
+        # Load exisitng yaml into dict
+        covarianceData = {}
+        with open(fileName, 'r') as fs:
             try:
-                covarianceData = yaml.safe_load(fs)
-            except:
-                print("file did not contain any yaml")
-            
-            # Update covar data
-            covarianceData[targetName] = {
-                "x": xVar,
-                "y": yVar,
-                "z": zVar,
-                "yaw": yawVar
-            }
+                yamlData = yaml.safe_load(fs)
+                if(not yamlData is None):
+                    covarianceData = yamlData
+                else:
+                    rospy.logwarn("File did not contain any yaml")
 
-            print(covarianceData)
+            except Exception as e:
+                rospy.logerror("Exception reading yaml file: {}".format(e))
+                
+        # Update covar data
+        covarianceData[targetName] = {
+            "x": xVar,
+            "y": yVar,
+            "z": zVar,
+            "yaw": yawVar
+        }
 
-            # Save data back to yaml
+        rospy.loginfo("Updating mapping covariance data: {}" .format(covarianceData))
+
+        # Save data back to yaml
+        with open(fileName, 'w') as fs:
             yaml.safe_dump(covarianceData, fs, default_flow_style=False)
 
         covarSaved = True
-        print("covariances updated")
+        rospy.loginfo("Mapping system covariances updated")
 
 
 # Main function
@@ -137,23 +145,29 @@ if __name__ == '__main__':
 
     rospy.init_node("mapping_covariance")
 
-    print("starting with ns: {}".format(rospy.get_namespace()))
-    
-    #fileName = rospy.get_param("")
+    if(rospy.get_namespace() == "/"):
+        rospy.logwarn("Namespace may be incorrect, launched on {}".format(rospy.get_namespace()))
 
-    print("loading TF listener")
+    # Handle startup parameters from tom of this file
+
+    #print(rospy.get_param_names())
+
+    targetName = rospy.get_param("~target", "cutie")
+    maxSamples = int(rospy.get_param("~samples", 100))
+    minCertainty = float(rospy.get_param("~certainty", 0.5))
+
+    if(maxSamples < 10):
+        rospy.logerror()
 
     # "class" variables 
     tl = tf.TransformListener()
     worldFrame = "world"
     cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
-        
-    #fileName = rospy.get_param()
 
     # Subscribers
     rospy.Subscriber("{}dope/detected_objects".format(rospy.get_namespace()), Detection3DArray, detectionCallback) # DOPE's information 
 
-    print("starting data collection")
+    rospy.loginfo("Computing mapping system variance for target '{}' from {} data points with minimum certainty of {}".format(targetName, maxSamples, minCertainty))
 
     rospy.spin()
     
