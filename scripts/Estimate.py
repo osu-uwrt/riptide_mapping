@@ -25,21 +25,26 @@ class Estimate:
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = rospy.Time() # stamp/time
 
-        self.stdevCutoff = 1 # number of standard deviations
-        self.angleCutoff = 15 # units: degrees
-        self.covLimit = 0.01 # covariance value units: m^2
-
+        self.stdev_cutoff = 1 # number of standard deviations
+        self.angle_cutoff = 15 # units: degrees
+        self.cov_limit = 0.01 # covariance value units: m^2
+        self.distance_limit = 100 # units: meters
+        
     # setter for the standard deviation cutoff
     def setStdevCutoff(self,value):
-        self.stdevCutoff = value
+        self.stdev_cutoff = value
 
     # setter for the angle cutoff
     def setAngleCutoff(self,value):
-        self.angleCutoff = value
+        self.angle_cutoff = value
     
     # setter for the covariance limit
     def setCovLimit(self,value):
-        self.covLimit = value
+        self.cov_limit = value
+
+    # setter for the distance_limit
+    def setDistanceLimit(self,value):
+        self.distance_limit = value
 
     # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
     # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
@@ -52,28 +57,17 @@ class Estimate:
         self_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
         _, _, self_yaw = euler_from_quaternion(self_quat)
 
-        # Reject anything that is too far from the origin (i.e. outside transdec)
+        # Reject detections that are too far from the origin (i.e. outside transdec)
         if msg.pose.pose.position.x >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.x <= -ORIGIN_DEVIATION_LIMIT or \
             msg.pose.pose.position.y >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.y <= -ORIGIN_DEVIATION_LIMIT or \
             msg.pose.pose.position.z >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.z <= -ORIGIN_DEVIATION_LIMIT:
             rospy.loginfo("Rejecting due to being too far from the origin.")
             return False
-        '''
-        # Reject anything that isn't reasonably flat 
-        if msg_roll <= -self.angleCutoff * DEG_TO_RAD or msg_roll >= self.angleCutoff * DEG_TO_RAD or \
-            msg_pitch <= -self.angleCutoff * DEG_TO_RAD or msg_pitch >= self.angleCutoff * DEG_TO_RAD:
-            rospy.loginfo("Rejecting due to having abnormal roll/pitch.")
-            return False '''
         
-
-        # TODO: Implement yaw check 
-        # TODO: z-check will matter for competition, we just disabled it to test with the pole for pool tests. Put it back in.
-        # if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * 2:
-        #     rospy.logwarn("Rejecting due to being unlikely in z-direction.")
-        #     return False
-        # TODO: Probably a way to factor in the message's covariance into this calculation as well. While the pole detector essentially gives us constant covariance for detections, we want super confident estimates to be rejected less. 
-        # If estimate is outside of one standard deviation of our estimate mean, ignore it
-        rospy.loginfo("-- Checking standard deviation with a cutoff of " + str(self.stdevCutoff) + " deviation(s) --")
+        # Reject detections that are too far away from the systems current estimate.
+        if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * self.stdevCutoff:
+             rospy.logwarn("Rejecting due to being unlikely in z-direction.")
+             return False
         if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * self.stdevCutoff:
             rospy.loginfo("Rejecting due to being unlikely (x-direction)")
             return False
@@ -81,16 +75,20 @@ class Estimate:
             rospy.loginfo("Rejecting due to being unlikely (y-direction)")
             return False 
 
-        # TODO: We want to reject unconfident guesses. Currently disabled, as the pole detector just sets this to zero; reenable it.
-        # Reject anything that isn't at least a moderate confidence value (also gets rid of division by zero errors down the line)
-        # if confidence < .1:
-        #     print("Rejecting due to low confidence ({}).".format(confidence))
-        #     return False
+        # Reject detections that are not confident enough to be considered.
+        if confidence < .1:
+            print("Rejecting due to low confidence ({}).".format(confidence))
+            return False
 
-        # TODO: Reject anything that is too far for us to realistically perceive (100m?)
-        # TODO: Reject anything that isn't within the robot's realistic field of view (...perception shouldn't give us readings like this in the first place, but doesn't hurt to check)
-
-        # If it didn't fail any checks, assume it's a good reading 
+        # Reject detections that are unreasonably far away from the camera
+        camera_x = msg_camera_frame.pose.pose.position.x
+        camera_y = msg_camera_frame.pose.pose.position.y
+        camera_z = msg_camera_frame.pose.pose.position.z
+        distance_from_robot = sqrt((camera_x ^ 2) + (camera_y ^ 2) + (camera_z ^2))
+        if(distance_from_robot > self.distance_limit):
+            return False
+        
+        # If the detection didn't fail any checks, assume it's a valid detection.
         return True 
 
     # Reconciles two estimates, each with a given estimated value and covariance
@@ -135,13 +133,11 @@ class Estimate:
         self.pos[1], self.covariance[1] = self.update_value(self.pos[1], msg_pose.position.y, self.covariance[1], msg_covariance[7])
         self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.z, self.covariance[2], msg_covariance[14])
 
-        # We essentially hardcode the initial yaw estimate for the pool test, but this should theoretically work 
-        '''
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
         _, _, msg_yaw = euler_from_quaternion([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w])
         msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
         self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], msg_covariance[35])
-        '''
+    
 
     # When getting distance between angles, situations like angle1=20 and angle2=340 will return that there's 320deg between them, not 40. 
     # This essentially constraints that!

@@ -156,6 +156,7 @@ def reconfigCallback(config, level):
         objects[objectName]["pose"].setStdevCutoff(config['stdev_cutoff'])
         objects[objectName]["pose"].setAngleCutoff(config['angle_cutoff'])
         objects[objectName]["pose"].setCovLimit(config['cov_limit'])
+        objects[objectName]["pose"].setDistanceLimit(config['distance_limit'])
         
         # Publish reconfigured data
         objects[objectName]["publisher"].publish(objects[objectName]["pose"].getPoseWithCovarianceStamped())
