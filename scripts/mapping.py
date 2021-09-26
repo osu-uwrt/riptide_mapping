@@ -5,6 +5,8 @@ import tf
 import tf2_ros
 import numpy as np
 import copy
+import yaml
+import os
 from tf2_ros.buffer_interface import convert 
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
@@ -98,6 +100,8 @@ def dopeCallback(msg):
             # reading_world_frame.pose.covariance = covariance_matrix.ravel()
 
             # NOTE: Temporarily converting score values to covariance.
+
+            object_base_variance = objects[name]
             world_frame_covariance = scoreToCov(result.score)
 
             reading_world_frame.pose.covariance[0] = world_frame_covariance[0] # X covariance
@@ -167,11 +171,14 @@ def reconfigCallback(config, level):
     '''
     return config
 
-# Very simple conversion from DOPE score to covariance
-def scoreToCov(score):
-    cov = 1 - score # The lower the covariance, the more sure the system is. Basically just invert the score value
-    covariance = [cov, cov, cov, cov] # x, y , z, yaw
-    return covariance
+# Handles the base object variance for each object.
+def base_object_variance(object_name, data):
+    target_data = data[object_name]
+    variance = np.array([target_data['x'],target_data['y'],target_data['z'],target_data['yaw']], float)
+    
+    return variance
+
+
 if __name__ == '__main__':
 
     rospy.init_node("mapping")
@@ -184,12 +191,35 @@ if __name__ == '__main__':
     # Creating publishers
     for field in objects:
         objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
-        
-    # Subscribers
-    rospy.Subscriber("{}dope/detected_objects".format(rospy.get_namespace()), Detection3DArray, dopeCallback) # DOPE's information 
 
     # Dynamic reconfiguration server
     server = Server(MappingConfig,reconfigCallback)
+
+    '''
+    initial_data_file = open(rospy.get_param("~initial_object_data"))
+    initial_data = yaml.load(initial_data_file, Loader=yaml.Loader)
+    '''
+    
+    fileName = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "cfg", "covariances.yaml")
+    initial_covariance = {}
+
+    with open(fileName, 'r') as fs:
+        try:
+            yamlData = yaml.safe_load(fs)
+            if(not yamlData is None):
+                initial_covariance = yamlData
+            else:
+                rospy.logwarn("File did not contain any yaml")
+
+        except Exception as e:
+            rospy.logerror("Exception reading yaml file: {}".format(e))
+
+    # Intitial covariance 
+    for object_name,_ in initial_covariance.items(): 
+        objects[object_name]["pose"].base_variance = base_object_variance(object_name, initial_covariance)
+
+    # Subscribers
+    rospy.Subscriber("{}dope/detected_objects".format(rospy.get_namespace()), Detection3DArray, dopeCallback) # DOPE's information 
 
     rospy.spin()
     

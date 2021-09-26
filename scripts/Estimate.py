@@ -1,3 +1,5 @@
+from numpy.lib.function_base import cov
+from numpy.lib.npyio import savez_compressed
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Vector3
@@ -8,7 +10,7 @@ from std_msgs.msg import Time
 from math import sqrt, pi, atan2
 from copy import deepcopy 
 import rospy 
-import numpy
+import numpy as np
 
 DEG_TO_RAD = pi / 180
 ORIGIN_DEVIATION_LIMIT = 500
@@ -22,6 +24,7 @@ class Estimate:
     def __init__(self, pos, yaw, cov):
         self.pos = pos # Length 3 List; x/y/z
         self.yaw = (atan2(pos[1], pos[0]) + (2 * pi)) % (2 * pi) # Rather than using initial estimate, should face towards robot (which starts at origin)
+        self.base_variance = np.array([0,0,0,0], float)
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = rospy.Time() # stamp/time
 
@@ -40,6 +43,7 @@ class Estimate:
     # setter for the covariance limit
     def setCovLimit(self,value):
         self.covLimit = value
+
 
     # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
     # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
@@ -103,13 +107,13 @@ class Estimate:
         # Ensure that covariance does not drop below the covariance threshold.
         if(new_cov < self.covLimit):
             new_cov = self.covLimit
-        return new_mean, new_cov 
+        return new_mean, new_cov
 
     # Takes in a new DOPE reading and updates our estimate
     # msg: PoseWithCovarianceStamped of our new reading (WORLD FRAME)
     # msg_camera_frame: PoseWithCovarianceStamped of our new reading (CAMERA FRAME); just used for error checking 
     # Confidence: [0, 1] score of how confident DOPE is that it is the object in question
-    def addPositionEstimate(self, msg, msg_camera_frame, confidence):
+    def addPositionEstimate(self, msg, msg_camera_frame, confidence_score):
 
         # Debug 
         rospy.loginfo_throttle(2, "Position (x,y,z,yaw): ({}m, {}m, {}m, {}rad)" \
@@ -119,7 +123,7 @@ class Estimate:
 
         # Filter out "false positives"
         # If we make it past this, we assume it's a true positive and is actually the object
-        if not self.isValidMeasurement(msg, msg_camera_frame, confidence):
+        if not self.isValidMeasurement(msg, msg_camera_frame, confidence_score):
             return
 
         # Update timestamp so it's the most recent routine 
@@ -127,13 +131,24 @@ class Estimate:
 
         # Convenient aliases
         msg_pose = msg.pose.pose
-        msg_covariance = msg.pose.covariance
+
+        # Calculate covariance
+        # Very simple conversion from DOPE score to covariance
+        cov_multiplier = 1 - confidence_score # The lower the covariance, the more sure the system is. Basically just invert the score value.
+        object_covaraince = self.base_variance * cov_multiplier # Multiply the base variance by the covariance multiplier we just calculated.
+
+        rospy.loginfo("Current Covariance: {}".format(self.covariance))
+        rospy.loginfo("Message Covariance: {}".format(object_covaraince))
+        
+        
 
         # Update translational axes 
         # Note that saved covariance is 4-Long List representing x/y/z/yaw whereas message covariance is a full 36-long array that we take the diagonal of 
-        self.pos[0], self.covariance[0] = self.update_value(self.pos[0], msg_pose.position.x, self.covariance[0], msg_covariance[0])
-        self.pos[1], self.covariance[1] = self.update_value(self.pos[1], msg_pose.position.y, self.covariance[1], msg_covariance[7])
-        self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.z, self.covariance[2], msg_covariance[14])
+        self.pos[0], self.covariance[0] = self.update_value(self.pos[0], msg_pose.position.x, self.covariance[0], object_covaraince[0])
+        self.pos[1], self.covariance[1] = self.update_value(self.pos[1], msg_pose.position.y, self.covariance[1], object_covaraince[1])
+        self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.z, self.covariance[2], object_covaraince[2])
+
+        rospy.loginfo("Updated Covariance: {}".format(self.covariance))
 
         # We essentially hardcode the initial yaw estimate for the pool test, but this should theoretically work 
         '''
@@ -166,7 +181,7 @@ class Estimate:
         output.pose.pose.position = Point(*self.pos)
 
         # Covariance 
-        covariance = numpy.zeros((6, 6))
+        covariance = np.zeros((6, 6))
         covariance[0, 0] = self.covariance[0]
         covariance[1, 1] = self.covariance[1]
         covariance[2, 2] = self.covariance[2]
