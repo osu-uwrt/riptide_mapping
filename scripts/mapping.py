@@ -67,6 +67,7 @@ def dopeCallback(msg):
         # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
         for result in detection.results: 
 
+            print("Covariance{}".format(result.pose.covariance))
             # Translate the ID that DOPE gives us to a name meaningful to us
             name = objectIDs[result.id]
 
@@ -98,16 +99,6 @@ def dopeCallback(msg):
             # rotated_result = np.dot(rotation_matrix, np.dot(cov, rotation_matrix.T))
             # covariance_matrix[:3, :3] = rotated_result
             # reading_world_frame.pose.covariance = covariance_matrix.ravel()
-
-            # NOTE: Temporarily converting score values to covariance.
-
-            object_base_variance = objects[name]
-            world_frame_covariance = scoreToCov(result.score)
-
-            reading_world_frame.pose.covariance[0] = world_frame_covariance[0] # X covariance
-            reading_world_frame.pose.covariance[7] = world_frame_covariance[1] # Y covariance
-            reading_world_frame.pose.covariance[14] = world_frame_covariance[2] # Z covariance
-            reading_world_frame.pose.covariance[35] = world_frame_covariance[3] # Yaw covariance
 
             # We do some error/reasonability checking with this
             reading_camera_frame = PoseWithCovarianceStamped()
@@ -214,7 +205,7 @@ if __name__ == '__main__':
         except Exception as e:
             rospy.logerror("Exception reading yaml file: {}".format(e))
 
-    # Intitial covariance 
+    # Intitial base variance for each object 
     for object_name,_ in initial_covariance.items(): 
         objects[object_name]["pose"].base_variance = base_object_variance(object_name, initial_covariance)
 

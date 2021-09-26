@@ -134,7 +134,7 @@ class Estimate:
 
         # Calculate covariance
         # Very simple conversion from DOPE score to covariance
-        cov_multiplier = 1 - confidence_score # The lower the covariance, the more sure the system is. Basically just invert the score value.
+        cov_multiplier = 1 / confidence_score # The lower the covariance, the more sure the system is. Basically just invert the score value.
         object_covaraince = self.base_variance * cov_multiplier # Multiply the base variance by the covariance multiplier we just calculated.
 
         rospy.loginfo("Current Covariance: {}".format(self.covariance))
