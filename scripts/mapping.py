@@ -2,7 +2,6 @@
 
 import rospy
 import tf
-import tf2_ros
 import numpy as np
 import copy
 import yaml
@@ -94,18 +93,6 @@ def dopeCallback(msg):
             reading_world_frame.header.frame_id = worldFrame
             reading_world_frame.pose.pose = copy.deepcopy(convertedPos.pose)
 
-            # Apply rotation to covariance matrix 
-            # To do that you just need to make a rotation matrix and then apply it to your covariance matrix
-            # Applying a rotation to a matrix is R * COV * RT where the T is transpose
-
-            # TODO: This is how covariance should be being calculated, however, DOPE is not giving us a covariance value for its detections.
-            # covariance_matrix = np.array(result.pose.covariance).reshape((6, 6))
-            # rotation_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
-            # cov = covariance_matrix[:3, :3] 
-            # rotated_result = np.dot(rotation_matrix, np.dot(cov, rotation_matrix.T))
-            # covariance_matrix[:3, :3] = rotated_result
-            # reading_world_frame.pose.covariance = covariance_matrix.ravel()
-
             # We do some error/reasonability checking with this
             reading_camera_frame = PoseWithCovarianceStamped()
             reading_camera_frame.header.frame_id = cameraFrame
@@ -116,7 +103,7 @@ def dopeCallback(msg):
             objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.score)
 
             # Publish that object's data out 
-            output_pose = objects[name]["pose"].getPoseWithCovarianceStamped()
+            output_pose = objects[name]["pose"].get_pose_with_covariance_stamped()
             objects[name]["publisher"].publish(output_pose)
 
             # Publish /tf data for the given object 
@@ -131,8 +118,7 @@ def dopeCallback(msg):
         
 
 # Handles reconfiguration for the mapping system.
-# TODO: In the future, we should only update the initial estimates of objects that have been reconfigured instead of 
-# indiscriminately updating everything regardless of whether or not they were actually reconfigured.
+# NOTE: Reconfig reconfigures all values, not just the one specified in rqt.
 def reconfigCallback(config, level):
 
     objectGroups = config["groups"]["groups"]["Objects"]["groups"]
@@ -153,21 +139,8 @@ def reconfigCallback(config, level):
         objects[objectName]["pose"].distance_limit = config['distance_limit']
         
         # Publish reconfigured data
-        objects[objectName]["publisher"].publish(objects[objectName]["pose"].getPoseWithCovarianceStamped())
+        objects[objectName]["publisher"].publish(objects[objectName]["pose"].get_pose_with_covariance_stamped())
 
-        # Console output (uncomment for debugging)
-        '''
-        rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
-        rospy.loginfo("Position for {object} has been reconfigured: {newPos}".format(object = objectName, newPos = object_position))
-        rospy.loginfo("Yaw for {object} has been reconfigured: {newYaw}".format(object = objectName, newYaw = object_yaw))
-        rospy.loginfo("Covariance for {object} has been reconfigured: {newCov}".format(object = objectName, newCov = object_covariance))
-        '''
-
-    # Console output (uncomment for debugging)
-    '''
-    rospy.loginfo("Standard deviation cutoff has been reconfigured: {stdevCutoff}".format(stdevCutoff = config['stdevCutoff']))
-    rospy.loginfo("Angle cutoff has been reconfigured: {angleCutoff}".format(angleCutoff = config['angleCutoff']))
-    '''
     return config
 
 # Handles the base object variance for each object.
@@ -194,11 +167,7 @@ if __name__ == '__main__':
     # Dynamic reconfiguration server
     server = Server(MappingConfig,reconfigCallback)
 
-    '''
-    initial_data_file = open(rospy.get_param("~initial_object_data"))
-    initial_data = yaml.load(initial_data_file, Loader=yaml.Loader)
-    '''
-    
+    # Load base variance file
     fileName = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "cfg", "covariances.yaml")
     initial_covariance = {}
 
@@ -213,7 +182,7 @@ if __name__ == '__main__':
         except Exception as e:
             rospy.logerror("Exception reading yaml file: {}".format(e))
 
-    # Intitial base variance for each object 
+    # Intitial base variance for each object
     for object_name,_ in initial_covariance.items(): 
         objects[object_name]["pose"].base_variance = base_object_variance(object_name, initial_covariance)
 

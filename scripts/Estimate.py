@@ -15,8 +15,6 @@ import numpy as np
 
 DEG_TO_RAD = pi / 180
 ORIGIN_DEVIATION_LIMIT = 500
-# Filter variables
-stdevCutoff = 1
 
 # Custom pose class that has commonly used mapping functionality 
 class Estimate:
@@ -35,27 +33,10 @@ class Estimate:
         self.k_value = 32768.0 # Used to calculate cov_multiplier. Determines how quickly the system converges on a value.
         self.distance_limit = 100 # units: meters
         
-    # setter for the standard deviation cutoff
-    def setStdevCutoff(self,value):
-        self.stdev_cutoff = value
-
-    # setter for the angle cutoff
-    def setAngleCutoff(self,value):
-        self.angle_cutoff = value
-    
-    # setter for the covariance limit
-    def setCovLimit(self,value):
-        self.cov_limit = value
-
-    # setter for the distance_limit
-    def setDistanceLimit(self,value):
-        self.distance_limit = value
-
-
-    # Takes in a reading and returns False if it's an invalid measurement we want to filter out, True otherwise
+    # Takes in a reading and returns False if it's an invalid detection we want to filter out, True otherwise
     # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
     # msg_camera_frame: PoseWithCovariancestamped representing robot in CAMERA frame 
-    def isValidMeasurement(self, msg, msg_camera_frame, confidence):
+    def isValidDetection(self, msg, msg_camera_frame, confidence):
 
         # Used throughout
         msg_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
@@ -71,13 +52,13 @@ class Estimate:
             return False
         
         # Reject detections that are too far away from the systems current estimate.
-        if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * self.stdevCutoff:
+        if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * self.stdev_cutoff:
              rospy.logwarn("Rejecting due to being unlikely in z-direction.")
              return False
-        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * self.stdevCutoff:
+        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * self.stdev_cutoff:
             rospy.loginfo("Rejecting due to being unlikely (x-direction)")
             return False
-        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * self.stdevCutoff:
+        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * self.stdev_cutoff:
             rospy.loginfo("Rejecting due to being unlikely (y-direction)")
             return False 
 
@@ -90,7 +71,7 @@ class Estimate:
         camera_x = msg_camera_frame.pose.pose.position.x
         camera_y = msg_camera_frame.pose.pose.position.y
         camera_z = msg_camera_frame.pose.pose.position.z
-        distance_from_robot = sqrt((camera_x ^ 2) + (camera_y ^ 2) + (camera_z ^2))
+        distance_from_robot = sqrt((camera_x**2.0) + (camera_y**2.0) + (camera_z**2.0))
         if(distance_from_robot > self.distance_limit):
             return False
         
@@ -99,14 +80,14 @@ class Estimate:
 
     # Reconciles two estimates, each with a given estimated value and covariance
     # From https://ccrma.stanford.edu/~jos/sasp/Product_Two_Gaussian_PDFs.html,
-    # Where measurement #1 is our current estimate and estimate #2 is the reading we just got in. 
+    # Where estimate #1 is our current estimate and estimate #2 is the reading we just got in. 
     def update_value(self, val1, val2, cov1, cov2):
         new_mean = (val1 * cov2 + val2 * cov1) / (cov1 + cov2)
         new_cov = (cov1 * cov2) / (cov1 + cov2)
 
         # Ensure that covariance does not drop below the covariance threshold.
-        if(new_cov < self.covLimit):
-            new_cov = self.covLimit
+        if(new_cov < self.cov_limit):
+            new_cov = self.cov_limit
         return new_mean, new_cov
 
     # Takes in a new DOPE reading and updates our estimate
@@ -123,7 +104,7 @@ class Estimate:
 
         # Filter out "false positives"
         # If we make it past this, we assume it's a true positive and is actually the object
-        if not self.isValidMeasurement(msg, msg_camera_frame, confidence_score):
+        if not self.isValidDetection(msg, msg_camera_frame, confidence_score):
             return
 
         # Update timestamp so it's the most recent routine 
@@ -136,20 +117,12 @@ class Estimate:
         # Very simple conversion from DOPE score to covariance
         cov_multiplier = 32768.0 * math.log(-confidence_score + 2) # The lower the covariance, the more sure the system is. Basically just invert the score value.
         object_covaraince = self.base_variance * cov_multiplier # Multiply the base variance by the covariance multiplier we just calculated.
-        rospy.loginfo("Object Confidence Score: {}".format(confidence_score))
-
-        rospy.loginfo("Current Covariance: {}".format(self.covariance))
-        rospy.loginfo("Message Covariance: {}".format(object_covaraince)) 
-
+        
         # Update translational axes 
         # Note that saved covariance is 4-Long List representing x/y/z/yaw whereas message covariance is a full 36-long array that we take the diagonal of 
         self.pos[0], self.covariance[0] = self.update_value(self.pos[0], msg_pose.position.x, self.covariance[0], object_covaraince[0])
         self.pos[1], self.covariance[1] = self.update_value(self.pos[1], msg_pose.position.y, self.covariance[1], object_covaraince[1])
         self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.z, self.covariance[2], object_covaraince[2])
-
-        rospy.loginfo("Updated Covariance: {}".format(self.covariance))
-
-        # We essentially hardcode the initial yaw estimate for the pool test, but this should theoretically work 
         
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
         _, _, msg_yaw = euler_from_quaternion([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w])
@@ -168,7 +141,7 @@ class Estimate:
         
     # Compiles our representation into an object that we want 
     # return: PoseWithCovarianceStamped message (http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/PoseWithCovarianceStamped.html)
-    def getPoseWithCovarianceStamped(self):
+    def get_pose_with_covariance_stamped(self):
 
         # Stamp 
         output = PoseWithCovarianceStamped()
