@@ -66,8 +66,6 @@ def dopeCallback(msg):
         # Context: This loop will run <number of objects DOPE can identify> times 
         # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
         for result in detection.results: 
-
-            print("Covariance{}".format(result.pose.covariance))
             # Translate the ID that DOPE gives us to a name meaningful to us
             name = objectIDs[result.id]
 
@@ -140,9 +138,10 @@ def reconfigCallback(config, level):
         objects[objectName]["pose"] = Estimate(object_position, object_yaw, object_covariance)
 
         # Update filter 
-        objects[objectName]["pose"].setStdevCutoff(config['stdevCutoff'])
-        objects[objectName]["pose"].setAngleCutoff(config['angleCutoff'])
-        objects[objectName]["pose"].setCovLimit(config['covLimit'])
+        objects[objectName]["pose"].stdev_cutoff = config['stdev_cutoff']
+        objects[objectName]["pose"].angle_cutoff = config['angle_cutoff']
+        objects[objectName]["pose"].cov_limit = config['cov_limit']
+        objects[objectName]["pose"].k_value = config['k_value']
         
         # Publish reconfigured data
         objects[objectName]["publisher"].publish(objects[objectName]["pose"].getPoseWithCovarianceStamped())

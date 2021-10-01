@@ -9,6 +9,7 @@ from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from std_msgs.msg import Time
 from math import sqrt, pi, atan2
 from copy import deepcopy 
+import math
 import rospy 
 import numpy as np
 
@@ -28,9 +29,10 @@ class Estimate:
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = rospy.Time() # stamp/time
 
-        self.stdevCutoff = 1 # number of standard deviations
-        self.angleCutoff = 15 # units: degrees
-        self.covLimit = 0.01 # covariance value units: m^2
+        self.stdev_cutoff = 1 # number of standard deviations
+        self.angle_cutoff = 15 # units: degrees
+        self.cov_limit = 0.01 # covariance value units: m^2
+        self.k_value = 32768.0 # Used to calculate cov_multiplier. Determines how quickly the system converges on a value.
 
     # setter for the standard deviation cutoff
     def setStdevCutoff(self,value):
@@ -134,13 +136,12 @@ class Estimate:
 
         # Calculate covariance
         # Very simple conversion from DOPE score to covariance
-        cov_multiplier = 1 / confidence_score # The lower the covariance, the more sure the system is. Basically just invert the score value.
+        cov_multiplier = 32768.0 * math.log(-confidence_score + 2) # The lower the covariance, the more sure the system is. Basically just invert the score value.
         object_covaraince = self.base_variance * cov_multiplier # Multiply the base variance by the covariance multiplier we just calculated.
+        rospy.loginfo("Object Confidence Score: {}".format(confidence_score))
 
         rospy.loginfo("Current Covariance: {}".format(self.covariance))
-        rospy.loginfo("Message Covariance: {}".format(object_covaraince))
-        
-        
+        rospy.loginfo("Message Covariance: {}".format(object_covaraince)) 
 
         # Update translational axes 
         # Note that saved covariance is 4-Long List representing x/y/z/yaw whereas message covariance is a full 36-long array that we take the diagonal of 
@@ -151,12 +152,12 @@ class Estimate:
         rospy.loginfo("Updated Covariance: {}".format(self.covariance))
 
         # We essentially hardcode the initial yaw estimate for the pool test, but this should theoretically work 
-        '''
+        
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
         _, _, msg_yaw = euler_from_quaternion([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w])
         msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
-        self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], msg_covariance[35])
-        '''
+        self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], object_covaraince[3])
+        
 
     # When getting distance between angles, situations like angle1=20 and angle2=340 will return that there's 320deg between them, not 40. 
     # This essentially constraints that!
