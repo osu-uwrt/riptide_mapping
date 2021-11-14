@@ -27,10 +27,10 @@ targetName = ""
 objectIDs = {
     0 : "gate",
     1 : "cutie", 
-    2 : "buoy", 
-    3 : "markers", 
-    4 : "torpedoes", 
-    5 : "retrieve", 
+    2 : "tommy", 
+    3 : "gman", 
+    4 : "bootlegger", 
+    5 : "badge", 
 }
 
 # global variables for runtime
