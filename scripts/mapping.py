@@ -120,9 +120,9 @@ def dopeCallback(msg):
 # Handles reconfiguration for the mapping system.
 # NOTE: Reconfig reconfigures all values, not just the one specified in rqt.
 def reconfigCallback(config, level):
-
     objectGroups = config["groups"]["groups"]["Objects"]["groups"]
     for objectName in objectGroups: # Checking EVERY object that could have been reconfigured.
+        
         objectName = objectName.lower()
 
         # Get pose data from reconfig and update our map accordingly
@@ -143,13 +143,21 @@ def reconfigCallback(config, level):
 
     return config
 
+# Load the object's information from data
+def initial_object_pose(data):
+    object_position = data["position"]
+    object_yaw = data["yaw"]
+    object_covariance = data["covariance"]
+    object_covariance[3] *= pi / 180 # file uses degrees to be more human-readable, code uses rads
+    return Estimate(object_position, object_yaw, object_covariance)
+
+
 # Handles the base object variance for each object.
 def base_object_variance(object_name, data):
     target_data = data[object_name]
     variance = np.array([target_data['x'],target_data['y'],target_data['z'],target_data['yaw']], float)
     
     return variance
-
 
 if __name__ == '__main__':
 
@@ -188,6 +196,16 @@ if __name__ == '__main__':
 
     # Subscribers
     rospy.Subscriber("{}dope/detected_objects".format(rospy.get_namespace()), Detection3DArray, dopeCallback) # DOPE's information 
+
+    rate = rospy.Rate(0.5) # ROS Rate at 0.5Hz
+    
+    # Publish data for each object
+    while not rospy.is_shutdown():
+        for object_name in objects:
+            objects[object_name]["pose"] = initial_object_pose(initial_data["objects"][object_name])    
+            objects[object_name]["publisher"].publish(objects[object_name]["pose"].get_pose_with_covariance_stamped())
+        rate.sleep()
+
 
     rospy.spin()
     
