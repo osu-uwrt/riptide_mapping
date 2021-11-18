@@ -201,8 +201,7 @@ if __name__ == '__main__':
     
     # Publish data for each object
     while not rospy.is_shutdown():
-        for object_name in objects:
-            objects[object_name]["pose"] = initial_object_pose(initial_data["objects"][object_name])    
+        for object_name in objects:    
             objects[object_name]["publisher"].publish(objects[object_name]["pose"].get_pose_with_covariance_stamped())
         rate.sleep()
 
