@@ -3,6 +3,6 @@
 <launch>
   <arg name="namespace" default="puddles" doc="Namespace of the vehicle" />
   <node name="mapping" pkg="riptide_mapping" type="mapping.py" output="screen" >
-    <param name="initial_object_data" type="string" value="$(find riptide_mapping)/cfg/initial_object_data.yaml" />
+    <param name="initial_object_data" type="string" value="$(find riptide_mapping)/cfg/Mapping.cfg" />
   </node>
 </launch>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-import tf
+import tf2_ros as tf
 import numpy as np
 import copy
 import yaml
@@ -10,6 +10,7 @@ from tf2_ros.buffer_interface import convert
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
 from tf2_geometry_msgs import PoseStamped
+from geometry_msgs.msg import TransformStamped
 from Estimate import Estimate
 from math import pi
 from dynamic_reconfigure.server import Server
@@ -141,6 +142,33 @@ def reconfigCallback(config, level):
 		# Publish reconfigured data
 		objects[objectName]["publisher"].publish(objects[objectName]["pose"].get_pose_with_covariance_stamped())
 
+		pose = objects[objectName]["pose"].get_pose_with_covariance_stamped().pose
+  
+		print(pose)
+	
+		# translation = (pose.pose.position.x, pose.pose.position.y, pose.pose.position.z) # Needs to be a 3-tuple rather than an object
+		# rotation = (pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w) # Needs to be a 4-tuple rather than an object
+		time = rospy.Time.now()
+		child = objectName + "_frame"
+		parent = "world"
+		rospy.loginfo(f"CHILD NAME: {child}")
+
+		transform = tf.TransformStamped()
+		transform.transform.translation.x = pose.pose.position.x
+		transform.transform.translation.y = pose.pose.position.y
+		transform.transform.translation.z = pose.pose.position.z
+
+		transform.transform.rotation.x = pose.pose.orientation.x
+		transform.transform.rotation.y = pose.pose.orientation.y
+		transform.transform.rotation.z = pose.pose.orientation.z
+		transform.transform.rotation.w = pose.pose.orientation.w
+		transform.header.frame_id = parent
+		transform.child_frame_id = child
+		transform.header.stamp = time
+  
+		tf.TransformBroadcaster().sendTransform(transform)
+  
+
 	return config
 
 # Load the object's information from data
@@ -160,11 +188,29 @@ def base_object_variance(object_name, data):
 	return variance
 
 if __name__ == '__main__':
-
 	rospy.init_node("mapping")
+ 
+	while rospy.is_shutdown():
+		pass
+
+	br = tf.TransformBroadcaster()
+	t = TransformStamped()
+	t.header.stamp = rospy.Time(0)
+	t.header.frame_id = "world"
+	t.child_frame_id = "cutie_frame"
+	t.transform.translation.x = 0
+	t.transform.translation.y = 2
+	t.transform.translation.z = -1
+	t.transform.rotation.x = 0
+	t.transform.rotation.y = 0
+	t.transform.rotation.z = 0
+	t.transform.rotation.w = 1
+	br.sendTransform(t)
+
 	
 	# "class" variables 
-	tl = tf.TransformListener()
+	tl = tf.Buffer()
+	tLook = tf.TransformListener(tl)
 	worldFrame = "world"
 	cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
 
@@ -194,20 +240,13 @@ if __name__ == '__main__':
 	for object_name,_ in initial_covariance.items(): 
 		objects[object_name]["pose"].base_variance = base_object_variance(object_name, initial_covariance)
 		# Intitial base variance for each object
-		pose = initial_object_pose(object_name)
-		translation = (pose.position.x, pose.position.y, pose.position.z) # Needs to be a 3-tuple rather than an object
-		rotation = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w) # Needs to be a 4-tuple rather than an object
-		time = rospy.Time.now()
-		child = object_name + "_frame"
-		parent = "world"
-		tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
-
 
 	# Subscribers
 	rospy.Subscriber("{}dope/detected_objects".format(rospy.get_namespace()), Detection3DArray, dopeCallback) # DOPE's information 
 	
 	rate = rospy.Rate(0.5) # ROS Rate at 0.5Hz
-	
+ 
+	rospy.spin()
 	
 	# Publish data for each object
 	while not rospy.is_shutdown():

@@ -1,0 +1,36 @@
+digraph G {
+"puddles/origin" -> "puddles/downward_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/base_link" -> "puddles/origin"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/downward_link" -> "puddles/downward_optical"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/dvl_link" -> "puddles/dvl_sonar0_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/origin" -> "puddles/dvl_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/dvl_link" -> "puddles/dvl_sonar1_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/dvl_link" -> "puddles/dvl_sonar2_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/dvl_link" -> "puddles/dvl_sonar3_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/origin" -> "puddles/imu_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/origin" -> "puddles/base_inertia"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"odom" -> "puddles/base_link"[label=" Broadcaster: /puddles/ekf_localization_node\nAverage rate: 30.181\nBuffer length: 4.97\nMost recent transform: 244.752\nOldest transform: 239.782\n"];
+"puddles/origin" -> "puddles/stereo/base_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/stereo/base_link" -> "puddles/stereo/imu_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/stereo/base_link" -> "puddles/stereo/left_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/stereo/left_link" -> "puddles/stereo/left_optical"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/stereo/left_link" -> "puddles/stereo/right_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/stereo/right_link" -> "puddles/stereo/right_optical"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"puddles/origin" -> "puddles/imu_revolute_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/base_link" -> "puddles/pose_sensor_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/pressure_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/stereo/base_link" -> "puddles/stereo/imu_revolute_link"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/thruster_0"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/thruster_1"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/thruster_2"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/thruster_3"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/thruster_4"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/thruster_5"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/thruster_6"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"puddles/origin" -> "puddles/thruster_7"[label=" Broadcaster: /puddles/robot_state_publisher\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.672\nOldest transform: 239.772\n"];
+"world" -> "odom"[label=" Broadcaster: /puddles/odom_to_world_broadcaster\nAverage rate: 10.204\nBuffer length: 4.9\nMost recent transform: 244.854\nOldest transform: 239.954\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 244.77"[ shape=plaintext ] ;
+}->"world";
+}
