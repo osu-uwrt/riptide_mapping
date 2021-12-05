@@ -194,7 +194,7 @@ if __name__ == '__main__':
 	for object_name,_ in initial_covariance.items(): 
 		objects[object_name]["pose"].base_variance = base_object_variance(object_name, initial_covariance)
 		# Intitial base variance for each object
-		pose = objects[object_name]["pose"]
+		pose = initial_object_pose(object_name)
 		translation = (pose.position.x, pose.position.y, pose.position.z) # Needs to be a 3-tuple rather than an object
 		rotation = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w) # Needs to be a 4-tuple rather than an object
 		time = rospy.Time.now()
