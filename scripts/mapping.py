@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
+import tf2_geometry_msgs
 import tf2_ros as tf
 import numpy as np
 import copy
@@ -64,8 +65,8 @@ def dopeCallback(msg):
 
 		# Verify TF system is established
 		try:
-			(trans, rot) = tl.lookupTransform(worldFrame, cameraFrame, rospy.Time(0))
-			t = tl.getLatestCommonTime(worldFrame, cameraFrame)
+			trans: TransformStamped = tl.lookup_transform(worldFrame, cameraFrame, rospy.Time(0))
+			t = trans.header.stamp
 
 		except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
 			return 
@@ -86,7 +87,7 @@ def dopeCallback(msg):
 			p1.header.stamp = t
 			p1.pose = result.pose.pose
 
-			convertedPos = tl.transformPose(worldFrame, p1)
+			convertedPos = tf2_geometry_msgs.do_transform_pose(p1, trans)
 
 			# Get the reading in the world frame message all together
 			reading_world_frame = PoseWithCovarianceStamped()
@@ -98,7 +99,7 @@ def dopeCallback(msg):
 			reading_camera_frame = PoseWithCovarianceStamped()
 			reading_camera_frame.header.frame_id = cameraFrame
 			reading_camera_frame.header.stamp = t 
-			reading_camera_frame.pose = result.pose
+			reading_camera_frame.pose = copy.deepcopy(result.pose)
 
 			# Merge the given position into our position for that object
 			objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.score)
@@ -114,7 +115,9 @@ def dopeCallback(msg):
 			time = t
 			child = name + "_frame"
 			parent = "world"
-			tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
+
+			global br
+			br.sendTransform(translation, rotation, time, child, parent)
 
 		
 
@@ -166,7 +169,8 @@ def reconfigCallback(config, level):
 		transform.child_frame_id = child
 		transform.header.stamp = time
   
-		tf.TransformBroadcaster().sendTransform(transform)
+		global br
+		br.sendTransform(transform)
   
 
 	return config
@@ -193,30 +197,16 @@ if __name__ == '__main__':
 	while rospy.is_shutdown():
 		pass
 
-	br = tf.TransformBroadcaster()
-	t = TransformStamped()
-	t.header.stamp = rospy.Time(0)
-	t.header.frame_id = "world"
-	t.child_frame_id = "cutie_frame"
-	t.transform.translation.x = 0
-	t.transform.translation.y = 2
-	t.transform.translation.z = -1
-	t.transform.rotation.x = 0
-	t.transform.rotation.y = 0
-	t.transform.rotation.z = 0
-	t.transform.rotation.w = 1
-	br.sendTransform(t)
-
-	
 	# "class" variables 
-	tl = tf.Buffer()
-	tLook = tf.TransformListener(tl)
+	br = tf.TransformBroadcaster()
+	tl = tf.BufferClient("/tempest/tf2_buffer_server")
+	tl.wait_for_server()
 	worldFrame = "world"
 	cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
 
 	# Creating publishers
 	for field in objects:
-		objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1)
+		objects[field]["publisher"] = rospy.Publisher("mapping/" + field, PoseWithCovarianceStamped, queue_size=1, latch=True)
 
 	# Dynamic reconfiguration server
 	server = Server(MappingConfig,reconfigCallback)
@@ -244,16 +234,4 @@ if __name__ == '__main__':
 	# Subscribers
 	rospy.Subscriber("{}dope/detected_objects".format(rospy.get_namespace()), Detection3DArray, dopeCallback) # DOPE's information 
 	
-	rate = rospy.Rate(0.5) # ROS Rate at 0.5Hz
- 
 	rospy.spin()
-	
-	# Publish data for each object
-	while not rospy.is_shutdown():
-		for object_name in objects:    
-			objects[object_name]["publisher"].publish(objects[object_name]["pose"].get_pose_with_covariance_stamped())
-		rate.sleep()
-
-
-	rospy.spin()
-	
