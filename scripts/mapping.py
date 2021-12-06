@@ -199,7 +199,7 @@ if __name__ == '__main__':
 
 	# "class" variables 
 	br = tf.TransformBroadcaster()
-	tl = tf.BufferClient("/tempest/tf2_buffer_server")
+	tl = tf.BufferClient("tf2_buffer_server")
 	tl.wait_for_server()
 	worldFrame = "world"
 	cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
