@@ -1,8 +1,0 @@
-<!-- TODO: Remove this comment after mapping is mergeable into bringup -->
-<!-- NOTE: Change to the `mapping` branch of `riptide_bringup` so this is actually called by `simulation.launch`! -->
-<launch>
-  <arg name="namespace" default="puddles" doc="Namespace of the vehicle" />
-  <node name="mapping" pkg="riptide_mapping" type="mapping.py" output="screen" >
-    <param name="initial_object_data" type="string" value="$(find riptide_mapping)/cfg/Mapping.cfg" />
-  </node>
-</launch>

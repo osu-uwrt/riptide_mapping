@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
-<package>
-  <name>riptide_mapping</name>
-  <version>0.1.0</version>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>riptide_mapping2</name>
+  <version>1.0.0</version>
   <description>Riptide's Mapping System.</description>
 
-  <maintainer email="acitelli.2@osu.edu">Anden Acitelli</maintainer>
+  <maintainer email="tucker.737@osu.edu">Cole Tucker</maintainer>
 
   <license>BSD</license>
 
@@ -13,21 +14,18 @@
 
   <author email="acitelli.2@osu.edu">Anden Acitelli</author>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
 
-  <build_depend>rospy</build_depend>
-  <build_depend>roscpp</build_depend>
-  <build_depend>roslint</build_depend>
-  <build_depend>python3-numpy</build_depend>
-  <build_depend>dynamic_reconfigure</build_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>roslaunch</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>dynamic_reconfigure</exec_depend>
 
-  <run_depend>rospy</run_depend>
-  <run_depend>roscpp</run_depend>
-  <run_depend>roslaunch</run_depend>
-  <run_depend>python3-numpy</run_depend>
-  <run_depend>python3-yaml</run_depend>
-  <run_depend>dynamic_reconfigure</run_depend>
-  
   <export>
+    <build_type>ament_python</build_type>
   </export>
 </package>
