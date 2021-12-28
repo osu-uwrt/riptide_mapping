@@ -20,7 +20,11 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mapping = riptide_mapping2.mapping:main'
+            'mapping = riptide_mapping2.mapping:main',
+            'calibrate = riptide_mapping2.calibrate:main',
         ],
     },
+    py_modules=[
+        'riptide_mapping2.Estimate'
+    ]
 )

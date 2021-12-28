@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
 import rclpy
+from rclpy.node import Node
+from rclpy.qos import qos_profile_system_default
 import tf2_ros
+from tf2_ros import TransformException
 import transforms3d
 import copy
 import statistics
 import yaml
 import os
-from tf2_ros.buffer_interface import convert 
-from tf2_ros import TransformException
+
 from geometry_msgs.msg import Pose
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseStamped
@@ -36,11 +38,9 @@ objectIDs = {
 samples = []
 
 # ROS parameter name for the yaml file
-fileName = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "cfg", "covariances.yaml")
+fileName = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "resource", "config.yaml")
 
-covarSaved = False
-
-class CalibNode(rclpy.Node):
+class CalibNode(Node):
 
     def __init__(self):
         super().__init__('mapping_calibration')
@@ -48,31 +48,32 @@ class CalibNode(rclpy.Node):
             self.get_logger().warning("Namespace may be incorrect, launched on {}".format(self.get_namespace()))
 
         # Handle startup parameters from top of this file
-        self.declare_parameter('~target')
-        self.declare_parameter('~samples')
-        self.declare_parameter('~certainty')
+        self.declare_parameter('~target', "cutie")
+        self.declare_parameter('~samples', 100)
+        self.declare_parameter('~certainty', 0.5)
 
-        targetName = self.get_parameter("~target", "cutie")
-        maxSamples = int(self.get_parameter("~samples", 100))
-        minCertainty = float(self.get_parameter("~certainty", 0.5))
+        targetName = self.get_parameter("~target").value
+        maxSamples = int(self.get_parameter("~samples").value)
+        minCertainty = float(self.get_parameter("~certainty").value)
 
         if(maxSamples < 10):
             self.get_logger().error("Calibration should use more than 10 samples")
             return
 
-        # "class" variables 
+        # class variables 
         self.tf_buffer = tf2_ros.buffer.Buffer()
         self.tl = tf2_ros.TransformListener(self.tf_buffer, self)
         self.worldFrame = "world"
         self.cameraFrame = "{}stereo/left_optical".format(self.get_namespace())
 
         # Subscribers
-        self.create_subscription("{}dope/detected_objects".format(self.get_namespace()), Detection3DArray, self.detectionCallback) # DOPE's information 
+        self.create_subscription(Detection3DArray, "{}dope/detected_objects".format(self.get_namespace()), self.detectionCallback, qos_profile_system_default) # DOPE's information 
+
+        self.covarSaved = False
 
         self.get_logger().info("Computing mapping system variance for target '{}' from {} data points with minimum certainty of {}".format(targetName, maxSamples, minCertainty))
 
     def detectionCallback(self, msg):
-        global covarSaved
         if(len(samples) <= maxSamples):
             #print("got detect {}".format(msg))
             for detection in msg.detections:
@@ -112,7 +113,7 @@ class CalibNode(rclpy.Node):
 
                         samples.append(copy.deepcopy(convertedPos.pose))
 
-        elif(not covarSaved):
+        elif(not self.covarSaved):
             self.get_logger().info("Data collection complete.\nCalculating vision system variance")
 
             # We have enough data to run statistics now
@@ -131,7 +132,7 @@ class CalibNode(rclpy.Node):
 
                 # Convert quaternion to euler angle
                 orient = [sample.orientation.x,sample.orientation.y ,sample.orientation.z, sample.orientation.w]
-                (roll, pitch, yaw) = transforms3d.euler.quat2euler(orient, 'xyzs')
+                (_, _, yaw) = transforms3d.euler.quat2euler(orient, 'xyzs')
                 yawData.append(yaw)
 
             # Calculate corresponding variances
@@ -178,10 +179,6 @@ def main(args=None):
 
     rclpy.spin(calib)
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    calib.destroy_node()
     rclpy.shutdown()
 
 
