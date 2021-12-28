@@ -1,6 +1,7 @@
 from numpy.lib.function_base import cov
 from numpy.lib.npyio import savez_compressed
 import transforms3d
+from rclpy.time import Time
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Point
@@ -20,8 +21,7 @@ class Estimate:
         self.yaw = (atan2(pos[1], pos[0]) + (2 * pi)) % (2 * pi) # Rather than using initial estimate, should face towards robot (which starts at origin)
         self.base_variance = np.array([0,0,0,0], float)
         self.covariance = cov # Length 4 List; x/y/z/yaw
-        self.stamp = rclpy.get_global_executor()._clock.now() # stamp/time
-
+        self.stamp = Time()
         self.stdev_cutoff = 1 # number of standard deviations
         self.angle_cutoff = 15 # units: degrees
         self.cov_limit = 0.01 # covariance value units: m^2
@@ -33,11 +33,12 @@ class Estimate:
     # msg_camera_frame: PoseWithCovariancestamped representing robot in CAMERA frame 
     def isValidDetection(self, msg, msg_camera_frame, confidence):
 
-        # Used throughout
-        msg_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
-        msg_roll, msg_pitch, msg_yaw = transforms3d.euler.quat2euler(msg_quat, 'xyzs')
-        self_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
-        _, _, self_yaw = transforms3d.euler.quat2euler(self_quat, 'xyzs')
+        # (NOT) Used throughout
+        # TODO check these conversions before use
+        # msg_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
+        # msg_roll, msg_pitch, msg_yaw = transforms3d.euler.quat2euler(msg_quat, 'sxyz')
+        # self_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
+        # _, _, self_yaw = transforms3d.euler.quat2euler(self_quat, 'sxyz')
 
         # Reject detections that are too far from the origin (i.e. outside transdec)
         if msg.pose.pose.position.x >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.x <= -ORIGIN_DEVIATION_LIMIT or \
@@ -108,7 +109,7 @@ class Estimate:
         self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.z, self.covariance[2], object_covaraince[2])
         
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
-        _, _, msg_yaw = transforms3d.euler.quat2euler([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w], 'xyzs')
+        _, _, msg_yaw = transforms3d.euler.quat2euler([msg_pose.orientation.w, msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z], 'sxyz')
         msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
         self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], object_covaraince[3])
         
@@ -129,11 +130,12 @@ class Estimate:
         # Stamp 
         output = PoseWithCovarianceStamped()
         output.header.frame_id = "world"
-        output.header.stamp = self.stamp
+        output.header.stamp = self.stamp.to_msg()
 
         # Orientation
-        output.pose.pose.orientation = Quaternion(transforms3d.euler.euler2quat([0, 0, self.yaw], axes='xyzs'))
-        output.pose.pose.position = Point(*self.pos)
+        quat = transforms3d.euler.euler2quat(0, 0, self.yaw, axes='sxyz')
+        output.pose.pose.orientation = Quaternion(w=quat[0], x=quat[1], y=quat[2], z=quat[3]) # make xyzw
+        output.pose.pose.position = Point(x=self.pos[0], y=self.pos[1], z=self.pos[2])
 
         # Covariance 
         covariance = np.zeros((6, 6))

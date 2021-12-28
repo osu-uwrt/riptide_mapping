@@ -1,17 +1,6 @@
-riptide_mapping2:
+/riptide_mapping2:
   ros__parameters:
     init_data:
-      cutie:
-        covar:
-          x: 2.0099095090803996e-06
-          y: 7.273919994657607e-07
-          yaw: 2.2062454055223684e-05
-          z: 2.372778249389679e-06
-        pose:
-          x: 2
-          y: 0
-          yaw: 359
-          z: -1
       gate:
         covar:
           x: 2.0099095090803996e-06
@@ -19,10 +8,21 @@ riptide_mapping2:
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2
-          y: 0
-          yaw: 359
-          z: -1
+          x: 10.0
+          y: 0.0
+          yaw: 359.0
+          z: -4.0
+      cutie:
+        covar:
+          x: 2.0099095090803996e-06
+          y: 7.273919994657607e-07
+          yaw: 2.2062454055223684e-05
+          z: 2.372778249389679e-06
+        pose:
+          x: 2.0
+          y: 0.0
+          yaw: 359.0
+          z: -1.0
       tommy:
         covar:
           x: 2.0099095090803996e-06
@@ -30,10 +30,10 @@ riptide_mapping2:
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2
-          y: 0
-          yaw: 359
-          z: -1
+          x: 2.0
+          y: 4.0
+          yaw: 359.0
+          z: -1.0
       gman:
         covar:
           x: 2.0099095090803996e-06
@@ -41,10 +41,10 @@ riptide_mapping2:
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2
-          y: 0
-          yaw: 359
-          z: -1
+          x: 2.0
+          y: 6.0
+          yaw: 359.0
+          z: -1.0
       bootlegger:
         covar:
           x: 2.0099095090803996e-06
@@ -52,10 +52,10 @@ riptide_mapping2:
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2
-          y: 0
-          yaw: 359
-          z: -1
+          x: -4.0
+          y: 0.0
+          yaw: 359.0
+          z: -1.0
       badge:
         covar:
           x: 2.0099095090803996e-06
@@ -63,14 +63,14 @@ riptide_mapping2:
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2
-          y: 0
-          yaw: 359
-          z: -1
-    stdev_cutoff: 3
+          x: 2.0
+          y: 2.0
+          yaw: 359.0
+          z: -1.0
+    stdev_cutoff: 3.0
     angle_cutoff: 15.0
     cov_limit: 0.01
     k_value: 0.01
-    distance_limit: 10
+    distance_limit: 10.0
         
   
