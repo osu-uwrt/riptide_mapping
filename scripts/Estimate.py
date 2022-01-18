@@ -18,11 +18,10 @@ ORIGIN_DEVIATION_LIMIT = 500
 
 # Custom pose class that has commonly used mapping functionality 
 class Estimate:
-
-    # TODO: Probably cleaner to just use a PoseWithCovarianceStamped object rather than keeping the fields separate 
+    
     def __init__(self, pos, yaw, cov):
         self.pos = pos # Length 3 List; x/y/z
-        self.yaw = (atan2(pos[1], pos[0]) + (2 * pi)) % (2 * pi) # Rather than using initial estimate, should face towards robot (which starts at origin)
+        self.yaw = yaw # units: Degrees
         self.base_variance = np.array([0,0,0,0], float)
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = rospy.Time() # stamp/time
