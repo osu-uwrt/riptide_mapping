@@ -126,7 +126,7 @@ class Estimate:
         
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
         _, _, msg_yaw = euler_from_quaternion([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w])
-        msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
+        msg_yaw = self.constrain_angle(self.yaw, msg_yaw)# + (math.pi/2)
         self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], object_covaraince[3])
         
 
