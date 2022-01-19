@@ -43,6 +43,11 @@ class Estimate:
         self_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
         _, _, self_yaw = euler_from_quaternion(self_quat)
 
+         # Reject detections that are not confident enough to be considered.
+        if confidence < .5:
+            print("Rejecting due to low confidence ({}).".format(confidence))
+            return False
+            
         # Reject detections that are too far from the origin (i.e. outside transdec)
         if msg.pose.pose.position.x >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.x <= -ORIGIN_DEVIATION_LIMIT or \
             msg.pose.pose.position.y >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.y <= -ORIGIN_DEVIATION_LIMIT or \
@@ -62,13 +67,10 @@ class Estimate:
             return False 
 
         # Yaw
-        if (msg_yaw > self.yaw + self.angle_cutoff or msg_yaw < self.yaw - self.angle_cutoff):
+        if ((msg_yaw > (self.yaw + self.angle_cutoff)) or (msg_yaw < (self.yaw - self.angle_cutoff))):
             return False
 
-        # Reject detections that are not confident enough to be considered.
-        if confidence < .1:
-            print("Rejecting due to low confidence ({}).".format(confidence))
-            return False
+       
 
 
     
