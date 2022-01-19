@@ -27,7 +27,7 @@ class Estimate:
         self.stamp = rospy.Time() # stamp/time
 
         self.stdev_cutoff = 1 # number of standard deviations
-        self.angle_cutoff = 15 # units: degrees
+        self.angle_cutoff = 5 # units: degrees
         self.cov_limit = 0.01 # covariance value units: m^2
         self.k_value = 32768.0 # Used to calculate cov_multiplier. Determines how quickly the system converges on a value.
         self.distance_limit = 100 # units: meters
@@ -61,10 +61,17 @@ class Estimate:
             rospy.loginfo("Rejecting due to being unlikely (y-direction)")
             return False 
 
+        # Yaw
+        if (msg_yaw > self.yaw + self.angle_cutoff or msg_yaw < self.yaw - self.angle_cutoff):
+            return False
+
         # Reject detections that are not confident enough to be considered.
         if confidence < .1:
             print("Rejecting due to low confidence ({}).".format(confidence))
             return False
+
+
+    
 
         # Reject detections that are unreasonably far away from the camera
         camera_x = msg_camera_frame.pose.pose.position.x
