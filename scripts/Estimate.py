@@ -68,12 +68,9 @@ class Estimate:
 
         # Yaw
         if ((msg_yaw > (self.yaw + self.angle_cutoff)) or (msg_yaw < (self.yaw - self.angle_cutoff))):
+            rospy.loginfo("Rejecting due to being unlikely (yaw)")
             return False
 
-       
-
-
-    
 
         # Reject detections that are unreasonably far away from the camera
         camera_x = msg_camera_frame.pose.pose.position.x
