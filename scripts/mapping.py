@@ -113,7 +113,7 @@ def dopeCallback(msg):
             time = t
             child = name + "_frame"
             parent = "world"
-            tf.TransformBroadcaster().sendTransform(translation, rotation, time, child, parent)
+            tb.sendTransform(translation, rotation, time, child, parent)
 
         
 
@@ -128,6 +128,7 @@ def reconfigCallback(config, level):
         # Get pose data from reconfig and update our map accordingly
         object_position = [config['{}_x_pos'.format(objectName)], config['{}_y_pos'.format(objectName)], config['{}_z_pos'.format(objectName)]]
         object_yaw = config['{}_yaw'.format(objectName)]
+        rospy.loginfo("new yaw: {}".format(object_yaw))
         object_covariance = [config['{}_x_cov'.format(objectName)], config['{}_y_cov'.format(objectName)], config['{}_z_cov'.format(objectName)], config['{}_yaw_cov'.format(objectName)]]
         objects[objectName]["pose"] = Estimate(object_position, object_yaw, object_covariance)
 
@@ -143,15 +144,6 @@ def reconfigCallback(config, level):
 
     return config
 
-# Load the object's information from data
-def initial_object_pose(data):
-    object_position = data["position"]
-    object_yaw = data["yaw"]
-    object_covariance = data["covariance"]
-    object_covariance[3] *= pi / 180 # file uses degrees to be more human-readable, code uses rads
-    return Estimate(object_position, object_yaw, object_covariance)
-
-
 # Handles the base object variance for each object.
 def base_object_variance(object_name, data):
     target_data = data[object_name]
@@ -165,6 +157,7 @@ if __name__ == '__main__':
     
     # "class" variables 
     tl = tf.TransformListener()
+    tb = tf.TransformBroadcaster()
     worldFrame = "world"
     cameraFrame = "{}stereo/left_optical".format(rospy.get_namespace())
 

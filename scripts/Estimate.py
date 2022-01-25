@@ -7,13 +7,11 @@ from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Point
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from std_msgs.msg import Time
-from math import sqrt, pi, atan2
-from copy import deepcopy 
+from math import sqrt, pi
 import math
 import rospy 
 import numpy as np
 
-DEG_TO_RAD = pi / 180
 ORIGIN_DEVIATION_LIMIT = 500
 
 # Custom pose class that has commonly used mapping functionality 
@@ -21,13 +19,15 @@ class Estimate:
     
     def __init__(self, pos, yaw, cov):
         self.pos = pos # Length 3 List; x/y/z
-        self.yaw = yaw # units: Degrees
+        self.yaw = (yaw / 180) * pi # units: radians (converted from degrees)
         self.base_variance = np.array([0,0,0,0], float)
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = rospy.Time() # stamp/time
 
+        # Reconfigurable filter values
+        self.confidence_cutoff = .5 # minium confidence of a detection
         self.stdev_cutoff = 1 # number of standard deviations
-        self.angle_cutoff = 5 # units: degrees
+        self.angle_cutoff = (15 / 180) * pi # units: radians (converted from degrees)
         self.cov_limit = 0.01 # covariance value units: m^2
         self.k_value = 32768.0 # Used to calculate cov_multiplier. Determines how quickly the system converges on a value.
         self.distance_limit = 100 # units: meters
@@ -39,45 +39,41 @@ class Estimate:
 
         # Used throughout
         msg_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
-        msg_roll, msg_pitch, msg_yaw = euler_from_quaternion(msg_quat)
-        self_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
-        _, _, self_yaw = euler_from_quaternion(self_quat)
+        _,_, msg_yaw = euler_from_quaternion(msg_quat) # just need yaw.
 
          # Reject detections that are not confident enough to be considered.
-        if confidence < .5:
+        if confidence < self.confidence_cutoff:
             print("Rejecting due to low confidence ({}).".format(confidence))
             return False
             
+        # Reject detections that are too far away from the systems current estimate.
+        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * self.stdev_cutoff: #X-direction
+            rospy.loginfo("Rejecting due to being unlikely (x-direction): {x}".format(x = msg.pose.pose.position.x))
+            return False
+        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * self.stdev_cutoff: #Y-direction
+            rospy.loginfo("Rejecting due to being unlikely (y-direction): {y}".format(y = msg.pose.pose.position.y))
+            return False 
+        if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * self.stdev_cutoff: #Z-direction
+             rospy.logwarn("Rejecting due to being unlikely (z-direction): {z}".format(z = msg.pose.pose.position.z))
+             return False
+        if ((msg_yaw > (self.yaw + self.angle_cutoff)) or (msg_yaw < (self.yaw - self.angle_cutoff))): #Yaw
+            rospy.loginfo("Rejecting due to being unlikely (yaw): {yaw}".format(yaw = msg_yaw))
+            return False
+
+        # Reject detections that are unreasonably far away from the camera
+        camera_frame_x = msg_camera_frame.pose.pose.position.x
+        camera_frame_y = msg_camera_frame.pose.pose.position.y
+        camera_frame_z = msg_camera_frame.pose.pose.position.z
+        distance_from_robot = sqrt((camera_frame_x**2.0) + (camera_frame_y**2.0) + (camera_frame_z**2.0))
+        if(distance_from_robot > self.distance_limit):
+            rospy.loginfo("Rejecting for being too far away: x:{x}, y:{y}, z:{z}".format(x = camera_frame_x, y = camera_frame_y, z = camera_frame_z))
+            return False
+        
         # Reject detections that are too far from the origin (i.e. outside transdec)
         if msg.pose.pose.position.x >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.x <= -ORIGIN_DEVIATION_LIMIT or \
             msg.pose.pose.position.y >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.y <= -ORIGIN_DEVIATION_LIMIT or \
             msg.pose.pose.position.z >= ORIGIN_DEVIATION_LIMIT or msg.pose.pose.position.z <= -ORIGIN_DEVIATION_LIMIT:
             rospy.loginfo("Rejecting due to being too far from the origin.")
-            return False
-        
-        # Reject detections that are too far away from the systems current estimate.
-        if abs(msg.pose.pose.position.z - self.pos[2]) >= sqrt(self.covariance[2]) * self.stdev_cutoff:
-             rospy.logwarn("Rejecting due to being unlikely in z-direction.")
-             return False
-        if abs(msg.pose.pose.position.x - self.pos[0]) >= sqrt(self.covariance[0]) * self.stdev_cutoff:
-            rospy.loginfo("Rejecting due to being unlikely (x-direction)")
-            return False
-        if abs(msg.pose.pose.position.y - self.pos[1]) >= sqrt(self.covariance[1]) * self.stdev_cutoff:
-            rospy.loginfo("Rejecting due to being unlikely (y-direction)")
-            return False 
-
-        # Yaw
-        if ((msg_yaw > (self.yaw + self.angle_cutoff)) or (msg_yaw < (self.yaw - self.angle_cutoff))):
-            rospy.loginfo("Rejecting due to being unlikely (yaw)")
-            return False
-
-
-        # Reject detections that are unreasonably far away from the camera
-        camera_x = msg_camera_frame.pose.pose.position.x
-        camera_y = msg_camera_frame.pose.pose.position.y
-        camera_z = msg_camera_frame.pose.pose.position.z
-        distance_from_robot = sqrt((camera_x**2.0) + (camera_y**2.0) + (camera_z**2.0))
-        if(distance_from_robot > self.distance_limit):
             return False
         
         # If the detection didn't fail any checks, assume it's a valid detection.
