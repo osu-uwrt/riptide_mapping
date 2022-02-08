@@ -1,5 +1,3 @@
-from numpy.lib.function_base import cov
-from numpy.lib.npyio import savez_compressed
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Vector3
@@ -13,13 +11,15 @@ import rospy
 import numpy as np
 
 ORIGIN_DEVIATION_LIMIT = 500
+DEG_TO_RAD = (pi/180)
+RAD_TO_DEG = (180/pi) # Used for debug output.
 
 # Custom pose class that has commonly used mapping functionality 
 class Estimate:
     
     def __init__(self, pos, yaw, cov):
         self.pos = pos # Length 3 List; x/y/z
-        self.yaw = (yaw / 180) * pi # units: radians (converted from degrees)
+        self.yaw = yaw # Units: Rads
         self.base_variance = np.array([0,0,0,0], float)
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = rospy.Time() # stamp/time
@@ -27,7 +27,7 @@ class Estimate:
         # Reconfigurable filter values
         self.confidence_cutoff = .5 # minium confidence of a detection
         self.stdev_cutoff = 1 # number of standard deviations
-        self.angle_cutoff = (15 / 180) * pi # units: radians (converted from degrees)
+        self.angle_cutoff = 15 * DEG_TO_RAD # Units: Rads
         self.cov_limit = 0.01 # covariance value units: m^2
         self.k_value = 32768.0 # Used to calculate cov_multiplier. Determines how quickly the system converges on a value.
         self.distance_limit = 100 # units: meters
@@ -57,7 +57,7 @@ class Estimate:
              rospy.logwarn("Rejecting due to being unlikely (z-direction): {z}".format(z = msg.pose.pose.position.z))
              return False
         if ((msg_yaw > (self.yaw + self.angle_cutoff)) or (msg_yaw < (self.yaw - self.angle_cutoff))): #Yaw
-            rospy.loginfo("Rejecting due to being unlikely (yaw): {yaw}".format(yaw = msg_yaw))
+            rospy.loginfo("Rejecting due to being unlikely (yaw): {yaw}".format(yaw = msg_yaw * RAD_TO_DEG))
             return False
 
         # Reject detections that are unreasonably far away from the camera
@@ -85,7 +85,7 @@ class Estimate:
     def update_value(self, val1, val2, cov1, cov2):
         new_mean = (val1 * cov2 + val2 * cov1) / (cov1 + cov2)
         new_cov = (cov1 * cov2) / (cov1 + cov2)
-
+        
         # Ensure that covariance does not drop below the covariance threshold.
         if(new_cov < self.cov_limit):
             new_cov = self.cov_limit
@@ -98,8 +98,8 @@ class Estimate:
     def addPositionEstimate(self, msg, msg_camera_frame, confidence_score):
 
         # Debug 
-        rospy.loginfo_throttle(2, "Position (x,y,z,yaw): ({}m, {}m, {}m, {}rad)" \
-            .format(self.pos[0], self.pos[1], self.pos[2], self.yaw))
+        rospy.loginfo_throttle(2, "Pose (x,y,z,yaw): ({}m, {}m, {}m, {}deg)" \
+            .format(self.pos[0], self.pos[1], self.pos[2], (self.yaw * 180) / pi))
         rospy.loginfo_throttle(2, "Covariances (x,y,z,yaw): ({}m^2, {}m^2, {}m^2, {}rad^2)" \
             .format(self.covariance[0], self.covariance[1], self.covariance[2], self.covariance[3]))
 
@@ -127,7 +127,10 @@ class Estimate:
         
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
         _, _, msg_yaw = euler_from_quaternion([msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z, msg_pose.orientation.w])
-        msg_yaw = self.constrain_angle(self.yaw, msg_yaw)# + (math.pi/2)
+        msg_yaw = (self.constrain_angle(self.yaw, msg_yaw))
+
+        rospy.loginfo("Message Yaw: {}".format(msg_yaw * RAD_TO_DEG))
+        rospy.loginfo("Current Yaw: {}".format(self.yaw * RAD_TO_DEG))
         self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], object_covaraince[3])
         
 

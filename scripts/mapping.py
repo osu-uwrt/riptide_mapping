@@ -10,10 +10,13 @@ from tf2_ros.buffer_interface import convert
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
 from tf2_geometry_msgs import PoseStamped
-from Estimate import Estimate
+from Estimate import DEG_TO_RAD,RAD_TO_DEG, Estimate
 from math import pi
 from dynamic_reconfigure.server import Server
 from riptide_mapping.cfg import MappingConfig
+
+#TODO: DEBUGGING
+#from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
@@ -93,6 +96,15 @@ def dopeCallback(msg):
             reading_world_frame.header.frame_id = worldFrame
             reading_world_frame.pose.pose = copy.deepcopy(convertedPos.pose)
 
+            #TODO: DEBUGGING
+            # msg = reading_world_frame
+            # msg_quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
+            # _,_, msg_yaw = euler_from_quaternion(msg_quat) # just need yaw.
+
+            # rospy.loginfo("************Raw detection yaw: {yaw}".format(yaw = msg_yaw * RAD_TO_DEG))
+
+            reading_world_frame.pose.pose.orientation
+
             # We do some error/reasonability checking with this
             reading_camera_frame = PoseWithCovarianceStamped()
             reading_camera_frame.header.frame_id = cameraFrame
@@ -127,9 +139,10 @@ def reconfigCallback(config, level):
 
         # Get pose data from reconfig and update our map accordingly
         object_position = [config['{}_x_pos'.format(objectName)], config['{}_y_pos'.format(objectName)], config['{}_z_pos'.format(objectName)]]
-        object_yaw = config['{}_yaw'.format(objectName)]
-        rospy.loginfo("new yaw: {}".format(object_yaw))
+        object_yaw = (config['{}_yaw'.format(objectName)]) * DEG_TO_RAD # Users will reconfig in degrees, system uses rads.
         object_covariance = [config['{}_x_cov'.format(objectName)], config['{}_y_cov'.format(objectName)], config['{}_z_cov'.format(objectName)], config['{}_yaw_cov'.format(objectName)]]
+        
+        # Create new estimate from reconfigured data.
         objects[objectName]["pose"] = Estimate(object_position, object_yaw, object_covariance)
 
         # Update filter 
