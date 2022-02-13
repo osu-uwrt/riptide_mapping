@@ -72,5 +72,6 @@
     cov_limit: 0.01
     k_value: 0.01
     distance_limit: 10.0
+    confidence_cutoff: .7
         
   
