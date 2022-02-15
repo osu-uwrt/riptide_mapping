@@ -13,6 +13,8 @@ from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, TransformS
 from riptide_mapping2.Estimate import Estimate
 from math import pi
 
+DEG_TO_RAD = (pi/180)
+
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
 objects = {
@@ -73,7 +75,8 @@ class MappingNode(Node):
                 ('angle_cutoff', 1.0),
                 ('cov_limit', 1.0),
                 ('k_value', 0.1),
-                ('distance_limit', 10.0)
+                ('distance_limit', 10.0),
+                ('confidence_cutoff', .7)
             ])
         
         # declare the fields for all of the models in the dict
@@ -128,7 +131,7 @@ class MappingNode(Node):
                 self.tf_brod.sendTransform(newTf)
 
     # This timer will fire 1 second after paramter updates
-    # This lets the parameter system reload all chnages before modifying the estimates that need to be updated
+    # This lets the parameter system reload all changes before modifying the estimates that need to be updated
     def processParamUpdates(self):
         success = True
         for objectName in objects: 
@@ -145,21 +148,25 @@ class MappingNode(Node):
                         self.config['init_data.{}.pose.y'.format(objectName)],
                         self.config['init_data.{}.pose.z'.format(objectName)]
                     ]
-                    object_yaw = self.config['init_data.{}.pose.yaw'.format(objectName)]
+                    object_yaw = self.config['init_data.{}.pose.yaw'.format(objectName)] * DEG_TO_RAD # Need to convert this from degrees to radians.
                     object_covariance = [
                         self.config['init_data.{}.covar.x'.format(objectName)],
                         self.config['init_data.{}.covar.y'.format(objectName)],
                         self.config['init_data.{}.covar.z'.format(objectName)],
                         self.config['init_data.{}.covar.yaw'.format(objectName)]
                     ]
+
+                    # Create a new Estimate object on reconfig.
                     objects[objectName]["pose"] = Estimate(object_position, object_yaw, object_covariance)
 
                     # Update filter 
                     objects[objectName]["pose"].stdev_cutoff = self.config['stdev_cutoff']
-                    objects[objectName]["pose"].angle_cutoff = self.config['angle_cutoff']
+                    objects[objectName]["pose"].angle_cutoff = self.config['angle_cutoff'] * DEG_TO_RAD # Need to convert this from degrees to radians.
                     objects[objectName]["pose"].cov_limit = self.config['cov_limit']
                     objects[objectName]["pose"].k_value = self.config['k_value']
                     objects[objectName]["pose"].distance_limit = self.config['distance_limit']
+                    objects[objectName]["pose"].confidence_cutoff = self.config['confidence_cutoff']
+                    
 
                 except Exception as e:
                     eStr = "Exception: {}, Exception message: {}".format(type(e).__name__, e)
