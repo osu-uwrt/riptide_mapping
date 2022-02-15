@@ -3,6 +3,7 @@ import launch.actions
 from ament_index_python.packages import get_package_share_directory
 import launch_ros.actions
 import os
+from launch.actions import DeclareLaunchArgument
 
 def generate_launch_description():
     # declare the launch args to read for this file
@@ -13,6 +14,12 @@ def generate_launch_description():
         )
 
     return launch.LaunchDescription([
+        DeclareLaunchArgument(
+            "log_level", 
+            default_value="INFO",
+            description="log level to use",
+        ),
+
         # create the nodes    
         launch_ros.actions.Node(
             package='riptide_mapping2',
