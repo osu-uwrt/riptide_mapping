@@ -101,11 +101,11 @@ class Estimate:
             covariance[3, 3] = self.covariance[3]
             self.error_pos.pose.covariance = covariance.flatten()
 
-    def hasDrift():
-        return not self.error_pose is None
+    def hasDrift(self):
+        return not self.error_pos is None
         
-    def getErrorPose():
-        return self.error_pose
+    def getErrorPose(self):
+        return self.error_pos
 
     # Reconciles two estimates, each with a given estimated value and covariance
     # From https://ccrma.stanford.edu/~jos/sasp/Product_Two_Gaussian_PDFs.html,
