@@ -17,6 +17,9 @@ DEG_TO_RAD = (pi/180)
 
 # Our overall data representation; each object has related information 
 # We fill the publishers in __init__
+
+#TODO: Create publishers for error for each object. Should publish the 'error_pos' field
+# for each esimate object.
 objects = {
     "cutie": { # Old game object used for testing
         "pose": None, 
@@ -118,6 +121,8 @@ class MappingNode(Node):
             if not objects[objectName]["pose"] is None:
                 # Publish that object's data out 
                 output_pose = objects[objectName]["pose"].get_pose_with_covariance_stamped()
+
+
                 objects[objectName]["publisher"].publish(output_pose)
 
                 # Publish /tf data for the given object 
