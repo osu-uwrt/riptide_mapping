@@ -19,10 +19,12 @@ class Estimate:
     # TODO: Probably cleaner to just use a PoseWithCovarianceStamped object rather than keeping the fields separate 
     def __init__(self, pos, yaw, cov):
         self.pos = pos # Length 3 List; x/y/z
+        self.error_pos = (0,0,0)
         self.yaw = yaw # units: Radians
         self.base_variance = np.array([0,0,0,0], float)
         self.covariance = cov # Length 4 List; x/y/z/yaw
         self.stamp = Time()
+
         self.confidence_cutoff = .7
         self.stdev_cutoff = 1 # number of standard deviations
         self.angle_cutoff = (15 * DEG_TO_RAD) # units: Radians (Converted From Degrees!)
@@ -35,8 +37,7 @@ class Estimate:
     # msg_camera_frame: PoseWithCovariancestamped representing robot in CAMERA frame 
     def isValidDetection(self, msg, msg_camera_frame, confidence):
 
-        # Reject detections that are not confident enough to be considered.
-        if confidence < .1:
+        if confidence < self.confidence_cutoff:
             return (False, "Rejecting due to low confidence ({}).".format(confidence))
 
         # Reject detections that are too far from the origin (i.e. outside transdec)
@@ -46,14 +47,16 @@ class Estimate:
             return (False, "Rejecting due to being too far from the origin.")
         
         # Reject detections that are too far away from the systems current estimate.
-        
         if abs(msg.pose.pose.position.x - self.pos[0]) >= (sqrt(self.covariance[0]) * self.stdev_cutoff):
+            self.handleInvalidDetection(msg, confidence)
             return (False, "Rejecting due to being unlikely (x-direction): {x}".format(x = msg.pose.pose.position.x))
         if abs(msg.pose.pose.position.y - self.pos[1]) >= (sqrt(self.covariance[1]) * self.stdev_cutoff):
+            self.handleInvalidDetection(msg, confidence)
             return (False, "Rejecting due to being unlikely (y-direction): {y}".format(y = msg.pose.pose.position.y))
         if abs(msg.pose.pose.position.z - self.pos[2]) >= (sqrt(self.covariance[2]) * self.stdev_cutoff):
+            self.handleInvalidDetection(msg, confidence)
             return (False, "Rejecting due to being unlikely (z-direction): {z}".format(z = msg.pose.pose.position.z))
-
+   
         # Yaw check.
         msg_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
         _, _, msg_yaw = euler.quat2euler(msg_quat, 'sxyz')
@@ -73,6 +76,23 @@ class Estimate:
         # If the detection didn't fail any checks, assume it's a valid detection.
         return True 
 
+    #TODO: this should handle invalid detections that the filter throws out. 
+    # Certain detections despite being "invalid" may have useful error information that localization
+    # can use to correct drift in the system.
+    def handleInvalidDetection(self, msg, confidence):
+        # This is hard coded for now but there should probably be a reconfigurable value.
+        error_confidence_cutoff = 0.9
+        msg_pos = msg.pose.pose.position
+        if(confidence >= error_confidence_cutoff):
+            # Just taking the difference between the current estimate and the messages' pos information.
+            self.error_pose[0] = (msg_pos.x - self.pos[0])
+            self.error_pose[1] = (msg_pos.y - self.pos[1])
+            self.error_pose[2] = (msg_pos.z - self.pos[2])
+            
+        
+
+        
+        
     # Reconciles two estimates, each with a given estimated value and covariance
     # From https://ccrma.stanford.edu/~jos/sasp/Product_Two_Gaussian_PDFs.html,
     # Where estimate #1 is our current estimate and estimate #2 is the reading we just got in. 
