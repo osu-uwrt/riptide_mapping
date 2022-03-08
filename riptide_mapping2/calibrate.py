@@ -64,10 +64,10 @@ class CalibNode(Node):
         self.tf_buffer = tf2_ros.buffer.Buffer()
         self.tl = tf2_ros.TransformListener(self.tf_buffer, self)
         self.worldFrame = "world"
-        self.cameraFrame = "{}stereo/left_optical".format(self.get_namespace())
+        self.cameraFrame = "{}/stereo/left_optical".format(self.get_namespace())
 
         # Subscribers
-        self.create_subscription(Detection3DArray, "{}dope/detected_objects".format(self.get_namespace()), self.detectionCallback, qos_profile_system_default) # DOPE's information 
+        self.create_subscription(Detection3DArray, "{}/dope/detected_objects".format(self.get_namespace()), self.detectionCallback, qos_profile_system_default) # DOPE's information 
 
         self.covarSaved = False
 

@@ -63,7 +63,7 @@ class MappingNode(Node):
         self.tf_buffer = tf2_ros.buffer.Buffer()
         self.tl = tf2_ros.TransformListener(self.tf_buffer, self)
         self.worldFrame = "world"
-        self.cameraFrame = "{}stereo/left_optical".format(self.get_namespace())
+        self.cameraFrame = "{}/stereo/left_optical".format(self.get_namespace())
         self.tf_brod = tf2_ros.transform_broadcaster.TransformBroadcaster(self)
         self.config = {}
 
@@ -99,10 +99,10 @@ class MappingNode(Node):
 
         # Creating publishers
         for field in objects:
-            objects[field]["publisher"] = self.create_publisher(PoseWithCovarianceStamped, "{}mapping/{}".format(self.get_namespace(), field), qos_profile_system_default)
+            objects[field]["publisher"] = self.create_publisher(PoseWithCovarianceStamped, "{}/mapping/{}".format(self.get_namespace(), field), qos_profile_system_default)
 
         # Subscribers
-        self.create_subscription(Detection3DArray, "{}dope/detected_objects".format(self.get_namespace()), self.dopeCallback, qos_profile_system_default) # DOPE's information 
+        self.create_subscription(Detection3DArray, "{}/dope/detected_objects".format(self.get_namespace()), self.dopeCallback, qos_profile_system_default) # DOPE's information 
 
         # Timers
         self.publishTimer = self.create_timer(0.5, self.pubEstim) # publish the inital estimate
