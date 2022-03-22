@@ -23,27 +23,33 @@ DEG_TO_RAD = (pi/180)
 objects = {
     "cutie": { # Old game object used for testing
         "pose": None, 
-        "publisher" : None
+        "publisher" : None,
+        "error_pub": None
     },
     "tommy": { # Tommygun game object.
         "pose":None,
-        "publisher": None
+        "publisher": None,
+        "error_pub": None
     },
     "gman": { # GMan game object.
         "pose":None,
-        "publisher": None
+        "publisher": None,
+        "error_pub": None
     },
     "bootlegger": { # Bootlegger game object.
         "pose":None,
-        "publisher": None
+        "publisher": None,
+        "error_pub": None
     },
     "badge": { # Badge game object.
         "pose":None,
-        "publisher": None
+        "publisher": None,
+        "error_pub": None
     },
     "gate": {
         "pose": None,
-        "publisher" : None
+        "publisher" : None,
+        "error_pub": None
     },
 }
 
@@ -103,6 +109,7 @@ class MappingNode(Node):
         # Creating publishers
         for field in objects:
             objects[field]["publisher"] = self.create_publisher(PoseWithCovarianceStamped, "{}mapping/{}".format(self.get_namespace(), field), qos_profile_system_default)
+            objects[field]["error_pub"] = self.create_publisher(PoseWithCovarianceStamped, "{}mapping/{}Drift".format(self.get_namespace(), field), qos_profile_system_default)
 
         # Subscribers
         self.create_subscription(Detection3DArray, "{}dope/detected_objects".format(self.get_namespace()), self.dopeCallback, qos_profile_system_default) # DOPE's information 
@@ -119,6 +126,11 @@ class MappingNode(Node):
     def pubEstim(self):
         for objectName in objects: 
             if not objects[objectName]["pose"] is None:
+                if (objects[objectName]["pose"].hasDrift()):
+                    output_pose = objects[objectName]["pose"].getErrorPose()
+                    objects[objectName]["error_pub"].publish(output_pose)
+                    return
+
                 # Publish that object's data out 
                 output_pose = objects[objectName]["pose"].get_pose_with_covariance_stamped()
 
