@@ -19,7 +19,7 @@ class Estimate:
     # TODO: Probably cleaner to just use a PoseWithCovarianceStamped object rather than keeping the fields separate 
     def __init__(self, pos, yaw, cov):
         self.pos = pos # Length 3 List; x/y/z
-        self.error_pos = (0,0,0)
+        self.error_pos = None
         self.yaw = yaw # units: Radians
         self.base_variance = np.array([0,0,0,0], float)
         self.covariance = cov # Length 4 List; x/y/z/yaw
@@ -36,6 +36,8 @@ class Estimate:
     # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
     # msg_camera_frame: PoseWithCovariancestamped representing robot in CAMERA frame 
     def isValidDetection(self, msg, msg_camera_frame, confidence):
+        
+        self.error_pos = None
 
         if confidence < self.confidence_cutoff:
             return (False, "Rejecting due to low confidence ({}).".format(confidence))
@@ -82,17 +84,29 @@ class Estimate:
     def handleInvalidDetection(self, msg, confidence):
         # This is hard coded for now but there should probably be a reconfigurable value.
         error_confidence_cutoff = 0.9
-        msg_pos = msg.pose.pose.position
         if(confidence >= error_confidence_cutoff):
-            # Just taking the difference between the current estimate and the messages' pos information.
-            self.error_pose[0] = (msg_pos.x - self.pos[0])
-            self.error_pose[1] = (msg_pos.y - self.pos[1])
-            self.error_pose[2] = (msg_pos.z - self.pos[2])
-            
-        
+            self.error_pos = PoseWithCovarianceStamped()
+            self.error_pos.header.frame_id = "world"
+            self.error_pos.stamp = self.stamp.to_msg()
 
+            # Orientation
+            self.error_pos.pose.pose.orientation = msg.pose.pose.quaternion
+            self.error_pos.pose.pose.position = msg.pose.pose.position
+
+            # Covariance 
+            covariance = np.zeros((6, 6))
+            covariance[0, 0] = self.covariance[0]
+            covariance[1, 1] = self.covariance[1]
+            covariance[2, 2] = self.covariance[2]
+            covariance[3, 3] = self.covariance[3]
+            self.error_pos.pose.covariance = covariance.flatten()
+
+    def hasDrift():
+        return not self.error_pose is None
         
-        
+    def getErrorPose():
+        return self.error_pose
+
     # Reconciles two estimates, each with a given estimated value and covariance
     # From https://ccrma.stanford.edu/~jos/sasp/Product_Two_Gaussian_PDFs.html,
     # Where estimate #1 is our current estimate and estimate #2 is the reading we just got in. 
