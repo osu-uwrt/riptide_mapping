@@ -58,9 +58,9 @@ class Estimate:
         msg_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
         _, _, msg_yaw = euler.quat2euler(msg_quat, 'sxyz')
 
-        msg_yaw = self.constrain_angle(self.yaw, msg_yaw) # Constrain the message yaw before we check it.
-        if ((msg_yaw > (self.yaw + self.angle_cutoff)) or (msg_yaw < (self.yaw - self.angle_cutoff))):
-            return (False, "Rejecting due to being unlikely (yaw): {yaw}".format(yaw = msg_yaw * RAD_TO_DEG))
+        #msg_yaw = self.constrain_angle(self.yaw, msg_yaw) # Constrain the message yaw before we check it.
+        #if ((msg_yaw > (self.yaw + self.angle_cutoff)) or (msg_yaw < (self.yaw - self.angle_cutoff))):
+        #    return (False, "Rejecting due to being unlikely (yaw): {yaw}".format(yaw = msg_yaw * RAD_TO_DEG))
 
         # Reject detections that are unreasonably far away from the camera
         camera_x = msg_camera_frame.pose.pose.position.x
@@ -113,9 +113,9 @@ class Estimate:
         self.pos[2], self.covariance[2] = self.update_value(self.pos[2], msg_pose.position.z, self.covariance[2], object_covaraince[2])
         
         # Yaw requires Quaterion->Euler transform, then we constrain it then feed it into our system 
-        _, _, msg_yaw = euler.quat2euler([msg_pose.orientation.w, msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z], 'sxyz')
-        msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
-        self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], object_covaraince[3])
+        #_, _, msg_yaw = euler.quat2euler([msg_pose.orientation.w, msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z], 'sxyz')
+        #msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
+        #self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], object_covaraince[3])
         
 
     # When getting distance between angles, situations like angle1=20 and angle2=340 will return that there's 320deg between them, not 40. 
