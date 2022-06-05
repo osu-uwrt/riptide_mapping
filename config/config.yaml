@@ -1,7 +1,7 @@
 /tempest/riptide_mapping2:
   ros__parameters:
     init_data:
-      gate:
+      gate: #dont edit gate for prequal, I'm not using it
         covar:
           x: 2.0099095090803996e-06
           y: 7.273919994657607e-07
@@ -34,17 +34,17 @@
           y: 4.0
           yaw: 359.0
           z: -1.0
-      gman:
+      gman: #EDIT ME FOR PREQUAL
         covar:
           x: 2.0099095090803996e-06
           y: 7.273919994657607e-07
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2.5
-          y: 1.5
-          yaw: 45.0
-          z: -1.0
+          x: 2.0
+          y: 0.0
+          yaw: 0.0 #HEY PREQUAL POOL TEST PEOPLE! REMEMBER TO CHANGE THE GATE YAW HERE! 
+          z: -0.5
       bootlegger:
         covar:
           x: 2.0099095090803996e-06
@@ -63,9 +63,9 @@
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2.0
-          y: 2.0
-          yaw: 359.0
+          x: 1.25
+          y: -2.75
+          yaw: -110.0
           z: -1.0
     stdev_cutoff: 3.0
     angle_cutoff: 15.0
