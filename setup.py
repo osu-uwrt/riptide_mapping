@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'mapping = riptide_mapping2.mapping:main',
             'calibrate = riptide_mapping2.calibrate:main',
+            'dummydetections = riptide_mapping2.dummy_detections:main'
         ],
     },
     py_modules=[
