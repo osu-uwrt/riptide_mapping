@@ -42,6 +42,10 @@ objects = {
         "pose": None,
         "publisher" : None
     },
+    "pole": {
+        "pose": None,
+        "publisher": None
+    }
 }
 
 # Used to translate between DOPE ids and names of objects
@@ -52,6 +56,7 @@ object_ids = {
     3 : "gman", 
     4 : "bootlegger", 
     5 : "badge", 
+    6 : "pole"
 }
 
 class MappingNode(Node):

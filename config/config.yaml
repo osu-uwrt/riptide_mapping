@@ -1,17 +1,28 @@
 /tempest/riptide_mapping2:
   ros__parameters:
     init_data:
-      gate: #dont edit gate for prequal, I'm not using it
+      pole:
         covar:
           x: 2.0099095090803996e-06
           y: 7.273919994657607e-07
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 10.0
-          y: 0.0
-          yaw: 359.0
-          z: -4.0
+          x: -6.0
+          y: 6.0
+          yaw: 135.0
+          z: 0.0
+      gate:
+        covar:
+          x: 2.0099095090803996e-06
+          y: 7.273919994657607e-07
+          yaw: 2.2062454055223684e-05
+          z: 2.372778249389679e-06
+        pose:
+          x: 0.0
+          y: 3.0
+          yaw: 90.0
+          z: 0.0
       cutie:
         covar:
           x: 2.0099095090803996e-06
