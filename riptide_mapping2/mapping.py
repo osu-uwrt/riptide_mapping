@@ -225,7 +225,7 @@ class MappingNode(Node):
             # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
             for result in detection.results: 
                 # Translate the ID that DOPE gives us to a name meaningful to us
-                name = object_ids[result.id]
+                name = result.hypothesis.class_id
 
                 # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
                 # We need to convert that to the world frame, which is what is used in our mapping system 
