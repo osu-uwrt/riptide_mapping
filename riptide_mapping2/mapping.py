@@ -70,18 +70,18 @@ objects = {
 
 # Used to translate between DOPE ids and names of objects
 #Believed to not be needed with ros2
-object_ids = {
-    0 : "BinBarrel",
-    1 : "BinPhone", 
-    2 : "TommyGun", 
-    3 : "gman", 
-    4 : "axe", 
-    5 : "torpedoGman", 
-    6 : "badge",
-    7 : "torpedoBootlegger",
-    8 : "bootlegger",
-    9 : "cash"
-}
+# object_ids = {
+#     0 : "BinBarrel",
+#     1 : "BinPhone", 
+#     2 : "TommyGun", 
+#     3 : "gman", 
+#     4 : "axe", 
+#     5 : "torpedoGman", 
+#     6 : "badge",
+#     7 : "torpedoBootlegger",
+#     8 : "bootlegger",
+#     9 : "cash"
+# }
 
 class MappingNode(Node):
 
@@ -234,7 +234,7 @@ class MappingNode(Node):
         # `detection` is of type Detection3D (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
         for detection in msg.detections:
 
-            now = rclpy.time.Time()
+            now = msg.header.stamp.sec
             try:
                 trans = self.tf_buffer.lookup_transform(
                     self.cameraFrame,
@@ -249,8 +249,8 @@ class MappingNode(Node):
             # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
             for result in detection.results: 
                 # Translate the ID that DOPE gives us to a name meaningful to us
-                name = object_ids[result.id]
-                #name = result.id
+                #name = object_ids[result.id] - ros 1
+                name = result.hypothesis.class_id 
 
                 # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
                 # We need to convert that to the world frame, which is what is used in our mapping system 
