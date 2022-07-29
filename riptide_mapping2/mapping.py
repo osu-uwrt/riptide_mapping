@@ -22,7 +22,7 @@ objects = {
         "pose": None, 
         "publisher" : None
     },
-    "tommy": { # Tommygun game object.
+    "TommyGun": { # Tommygun game object.
         "pose":None,
         "publisher": None
     },
@@ -38,13 +38,38 @@ objects = {
         "pose":None,
         "publisher": None
     },
-    "gate": {
+    "gate": { #not in use...
         "pose": None,
         "publisher" : None
     },
+    "BinBarrel":{
+        "pose" : None,
+        "publisher" : None
+    },
+    "BinPhone":{
+        "pose" : None,
+        "publisher" : None
+    },
+    "axe":{
+        "pose" : None,
+        "publisher" : None
+    },
+    "torpedoGman":{
+        "pose" : None,
+        "publisher" : None
+    },
+    "torpedoBootlegger" : {
+        "pose" : None,
+        "publiher" : None
+    },
+    "cash":{
+        "pose" : None,
+        "publisher" : None
+    }
 }
 
 # Used to translate between DOPE ids and names of objects
+#Believed to not be needed with ros2
 object_ids = {
     0 : "gate",
     1 : "cutie", 
@@ -221,6 +246,7 @@ class MappingNode(Node):
             for result in detection.results: 
                 # Translate the ID that DOPE gives us to a name meaningful to us
                 name = object_ids[result.id]
+                #name = result.id
 
                 # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
                 # We need to convert that to the world frame, which is what is used in our mapping system 
