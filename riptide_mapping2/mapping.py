@@ -68,20 +68,19 @@ objects = {
     }
 }
 
-# Used to translate between DOPE ids and names of objects
-#Believed to not be needed with ros2
-# object_ids = {
-#     0 : "BinBarrel",
-#     1 : "BinPhone", 
-#     2 : "TommyGun", 
-#     3 : "gman", 
-#     4 : "axe", 
-#     5 : "torpedoGman", 
-#     6 : "badge",
-#     7 : "torpedoBootlegger",
-#     8 : "bootlegger",
-#     9 : "cash"
-# }
+#Used to translate between DOPE ids and names of objects
+object_ids = {
+    0 : "BinBarrel",
+    1 : "BinPhone", 
+    2 : "TommyGun", 
+    3 : "gman", 
+    4 : "axe", 
+    5 : "torpedoGman", 
+    6 : "badge",
+    7 : "torpedoBootlegger",
+    8 : "bootlegger",
+    9 : "cash"
+}
 
 class MappingNode(Node):
 
