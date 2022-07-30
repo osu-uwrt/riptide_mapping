@@ -1,7 +1,7 @@
 /tempest/riptide_mapping2:
   ros__parameters:
     init_data:
-      pole:
+      pole: #not used comp
         covar:
           x: 2.0099095090803996e-06
           y: 7.273919994657607e-07
@@ -12,7 +12,7 @@
           y: 6.0
           yaw: 135.0
           z: 0.0
-      gate:
+      gate: #not used comp
         covar:
           x: 2.0099095090803996e-06
           y: 7.273919994657607e-07
@@ -21,16 +21,16 @@
         pose:
           x: 0.0
           y: 4.0
-          yaw: 86.0
+          yaw: 90.0
           z: -0.5
-      cutie:
+      cutie: 
         covar:
           x: 2.0099095090803996e-06
           y: 7.273919994657607e-07
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2.0
+          x: 
           y: 0.0
           yaw: 359.0
           z: -1.0
@@ -41,9 +41,9 @@
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2.0
-          y: 4.0
-          yaw: 359.0
+          x: 11.18
+          y: 5.51
+          yaw: 135.0
           z: -1.0
       gman: #EDIT ME FOR PREQUAL
         covar:
@@ -52,10 +52,10 @@
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 0.0
-          y: -4.0
-          yaw: 84.0 #HEY PREQUAL POOL TEST PEOPLE! REMEMBER TO CHANGE THE GATE YAW HERE! 
-          z: -0.5
+          x: -9.25
+          y: 3.38
+          yaw: 90.0
+          z: -1.5
       bootlegger:
         covar:
           x: 2.0099095090803996e-06
@@ -63,10 +63,10 @@
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: -4.0
-          y: 0.0
-          yaw: 359.0
-          z: -1.0
+          x: -9.25
+          y: 3.38
+          yaw: 90.0
+          z: -1.5
       badge:
         covar:
           x: 2.0099095090803996e-06
@@ -74,10 +74,21 @@
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 1.25
-          y: -2.75
-          yaw: -110.0
-          z: -1.0
+          x: 11.18
+          y: 5.51
+          yaw: 135.0
+          z: -1.5
+      torpedoBootlegger:
+        covar:
+          x: 2.0099095090803996e-06
+          y: 7.273919994657607e-07
+          yaw: 2.2062454055223684e-05
+          z: 2.372778249389679e-06
+        pose:
+          x: -9.25
+          y: 9.77
+          yaw: 135.0
+          z: -1.5
     stdev_cutoff: 3.0
     angle_cutoff: 15.0
     cov_limit: 0.01
