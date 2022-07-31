@@ -130,7 +130,7 @@ class MappingNode(Node):
             objects[field]["publisher"] = self.create_publisher(PoseWithCovarianceStamped, "{}/mapping/{}".format(self.get_namespace(), field), qos_profile_system_default)
 
         # Subscribers
-        self.create_subscription(Detection3DArray, "{}/dope/detected_objects".format(self.get_namespace()), self.dopeCallback, qos_profile_system_default) # DOPE's information 
+        self.create_subscription(Detection3DArray, "{}/yolo/detected_objects".format(self.get_namespace()), self.dopeCallback, qos_profile_system_default) # DOPE's information 
 
         # Timers
         self.publishTimer = self.create_timer(0.5, self.pubEstim) # publish the inital estimate
