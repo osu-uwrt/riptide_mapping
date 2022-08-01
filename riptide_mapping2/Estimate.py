@@ -70,7 +70,7 @@ class Estimate:
             return (False, "Rejecting due to high distance ({}).".format(distance_from_robot))
         
         # If the detection didn't fail any checks, assume it's a valid detection.
-        return True 
+        return (True, "") 
 
     # Reconciles two estimates, each with a given estimated value and covariance
     # From https://ccrma.stanford.edu/~jos/sasp/Product_Two_Gaussian_PDFs.html,

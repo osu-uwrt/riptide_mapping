@@ -239,12 +239,12 @@ class MappingNode(Node):
                 reading_camera_frame.header.stamp = msg.header.stamp
                 reading_camera_frame.pose = result.pose
                 
-                self.get_logger().info(f"Transformed Pose: {convertedPose}")
+                # self.get_logger().info(f"Transformed Pose: {convertedPose}")
 
                 # Merge the given position into our position for that object
                 valid, errStr = objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.hypothesis.score, now)
                 if(not valid):
-                    self.get_logger().warning(errStr)
+                    self.get_logger().warning(f"detected {name}: {errStr}")
 
 
     # Load the object's information from data
