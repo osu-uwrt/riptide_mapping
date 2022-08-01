@@ -244,7 +244,7 @@ class MappingNode(Node):
                 # Merge the given position into our position for that object
                 valid, errStr = objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.hypothesis.score, now)
                 if(not valid):
-                    self.get_logger().error(errStr)
+                    self.get_logger().warning(errStr)
 
 
     # Load the object's information from data
