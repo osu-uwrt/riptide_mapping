@@ -20,9 +20,9 @@
           z: 2.372778249389679e-06
         pose:
           x: 0.0
-          y: 3.0
-          yaw: 90.0
-          z: 0.0
+          y: 4.0
+          yaw: 86.0
+          z: -0.5
       cutie:
         covar:
           x: 2.0099095090803996e-06
@@ -52,9 +52,9 @@
           yaw: 2.2062454055223684e-05
           z: 2.372778249389679e-06
         pose:
-          x: 2.0
-          y: 0.0
-          yaw: 0.0 #HEY PREQUAL POOL TEST PEOPLE! REMEMBER TO CHANGE THE GATE YAW HERE! 
+          x: 0.0
+          y: -4.0
+          yaw: 84.0 #HEY PREQUAL POOL TEST PEOPLE! REMEMBER TO CHANGE THE GATE YAW HERE! 
           z: -0.5
       bootlegger:
         covar:
@@ -85,4 +85,4 @@
     distance_limit: 10.0
     confidence_cutoff: .7
         
-  
+ 
