@@ -13,6 +13,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, TransformS
 from riptide_mapping2.Estimate import Estimate
 from tf_transformations import euler_from_quaternion
 from math import pi, sin, cos
+from tf2_geometry_msgs import do_transform_pose_stamped
 
 DEG_TO_RAD = (pi/180)
 
@@ -36,39 +37,6 @@ for key in object_ids.values():
         "pose" : None,
         "publisher" : None
     }
-    
-
-def rotateAboutYaw(pt: Vector3, angle) -> Vector3:
-    x = pt.x * cos(angle) - pt.y * sin(angle)
-    y = pt.x * sin(angle) + pt.y * cos(angle)
-    
-    res = Vector3()
-    res.x = x
-    res.y = y
-    res.z = pt.z
-    
-    return res
-
-#basically this method should be the exact python version of doTransform() in util.cpp but without transforming the quaternion and returning a pose
-def doTransform(coords: Vector3, transform: TransformStamped) -> Vector3:
-    #rotate point with transform orientation
-    rpy = euler_from_quaternion([
-        transform.transform.rotation.x,
-        transform.transform.rotation.y,
-        transform.transform.rotation.z,
-        transform.transform.rotation.w
-    ])
-    
-    yaw = rpy[2]
-    relative = rotateAboutYaw(coords, yaw)
-    
-    position = Vector3()
-    position.x = relative.x + transform.transform.translation.x
-    position.y = relative.y + transform.transform.translation.y
-    position.z = relative.z + transform.transform.translation.z
-    
-    return position
-
 
 class MappingNode(Node):
 
@@ -78,6 +46,7 @@ class MappingNode(Node):
         # class variables 
         self.tf_buffer = tf2_ros.buffer.Buffer()
         self.tl = tf2_ros.TransformListener(self.tf_buffer, self)
+        self.tf_buffer.transform
         self.worldFrame = "world"
         
         ## TODO CHANGE THIS TO WORK PROPERLY
@@ -250,31 +219,32 @@ class MappingNode(Node):
                 # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
                 # We need to convert that to the world frame, which is what is used in our mapping system 
                 # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
-                # Transform the pose part               
-                transform = self.tf_buffer.lookup_transform(
-                    self.worldFrame,
-                    self.cameraFrame,
-                    now
-                )
+                # Transform the pose part 
+                pose = PoseStamped()
+                pose.header.frame_id = self.cameraFrame
+                pose.header.stamp = msg.header.stamp
+                pose.pose = result.pose.pose           
 
-                convertedVect = doTransform(result.pose.pose.position, transform)                
+                convertedPose = do_transform_pose_stamped(pose, trans)               
 
                 # Get the reading in the world frame message all together
                 reading_world_frame = PoseWithCovarianceStamped()
                 reading_world_frame.header.stamp = msg.header.stamp
                 reading_world_frame.header.frame_id = self.worldFrame
-                reading_world_frame.pose.pose.position.x = convertedVect.x
-                reading_world_frame.pose.pose.position.y = convertedVect.y
-                reading_world_frame.pose.pose.position.z = convertedVect.z                
+                reading_world_frame.pose.pose = convertedPose.pose          
 
                 # We do some error/reasonability checking with this
                 reading_camera_frame = PoseWithCovarianceStamped()
                 reading_camera_frame.header.frame_id = self.cameraFrame
                 reading_camera_frame.header.stamp = msg.header.stamp
                 reading_camera_frame.pose = result.pose
+                
+                self.get_logger().info(f"Transformed Pose: {convertedPose}")
 
                 # Merge the given position into our position for that object
-                objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.hypothesis.score, now)
+                valid, errStr = objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.hypothesis.score, now)
+                if(not valid):
+                    self.get_logger().error(errStr)
 
 
     # Load the object's information from data

@@ -11,7 +11,7 @@ import numpy as np
 
 DEG_TO_RAD = (pi/180)
 RAD_TO_DEG = (180/pi) # Used for debug output
-ORIGIN_DEVIATION_LIMIT = 500
+ORIGIN_DEVIATION_LIMIT = 50
 
 # Custom pose class that has commonly used mapping functionality 
 class Estimate:
@@ -28,7 +28,7 @@ class Estimate:
         self.angle_cutoff = (15 * DEG_TO_RAD) # units: Radians (Converted From Degrees!)
         self.cov_limit = 0.01 # covariance value units: m^2
         self.k_value = 32768.0 # Used to calculate cov_multiplier. Determines how quickly the system converges on a value.
-        self.distance_limit = 100 # units: meters
+        self.distance_limit = 5.0 # units: meters
         
     # Takes in a reading and returns False if it's an invalid detection we want to filter out, True otherwise
     # msg: PoseWithCovarianceStamped representing robot in WORLD frame 
@@ -36,7 +36,7 @@ class Estimate:
     def isValidDetection(self, msg, msg_camera_frame, confidence):
 
         # Reject detections that are not confident enough to be considered.
-        if confidence < .1:
+        if confidence < .5:
             return (False, "Rejecting due to low confidence ({}).".format(confidence))
 
         # Reject detections that are too far from the origin (i.e. outside transdec)
@@ -46,7 +46,6 @@ class Estimate:
             return (False, "Rejecting due to being too far from the origin.")
         
         # Reject detections that are too far away from the systems current estimate.
-        
         if abs(msg.pose.pose.position.x - self.pos[0]) >= (sqrt(self.covariance[0]) * self.stdev_cutoff):
             return (False, "Rejecting due to being unlikely (x-direction): {x}".format(x = msg.pose.pose.position.x))
         if abs(msg.pose.pose.position.y - self.pos[1]) >= (sqrt(self.covariance[1]) * self.stdev_cutoff):
@@ -92,8 +91,9 @@ class Estimate:
     def addPositionEstimate(self, msg, msg_camera_frame, confidence_score, time):
         # Filter out "false positives"
         # If we make it past this, we assume it's a true positive and is actually the object
-        if not self.isValidDetection(msg, msg_camera_frame, confidence_score):
-            return
+        valid, errString = self.isValidDetection(msg, msg_camera_frame, confidence_score)
+        if not valid:
+            return (False, errString)
 
         # Update timestamp so it's the most recent routine 
         self.stamp = time
@@ -116,6 +116,8 @@ class Estimate:
         #_, _, msg_yaw = euler.quat2euler([msg_pose.orientation.w, msg_pose.orientation.x, msg_pose.orientation.y, msg_pose.orientation.z], 'sxyz')
         #msg_yaw = self.constrain_angle(self.yaw, msg_yaw)
         #self.yaw, self.covariance[3] = self.update_value(self.yaw, msg_yaw, self.covariance[3], object_covaraince[3])
+        
+        return (True, "")
         
 
     # When getting distance between angles, situations like angle1=20 and angle2=340 will return that there's 320deg between them, not 40. 
