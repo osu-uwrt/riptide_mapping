@@ -192,7 +192,7 @@ class MappingNode(Node):
         # `detection` is of type Detection3D (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
         for detection in msg.detections:
 
-            self.get_logger().info(f"Detection Pose: {detection.results[0].pose.pose}")
+            # self.get_logger().info(f"Detection Pose: {detection.results[0].pose.pose}")
 
             now = Time(seconds=msg.header.stamp.sec, nanoseconds=msg.header.stamp.nanosec)
             
