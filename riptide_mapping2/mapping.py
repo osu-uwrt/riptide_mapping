@@ -1,72 +1,20 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.time import Time
 from rclpy.qos import qos_profile_system_default # can replace this with others
 from rcl_interfaces.msg import SetParametersResult
 import tf2_ros
 from tf2_ros import TransformException
-import transforms3d
 import numpy as np
 import copy
 from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, TransformStamped, Vector3
 from riptide_mapping2.Estimate import Estimate
-from math import pi
+from tf_transformations import euler_from_quaternion
+from math import pi, sin, cos
 
 DEG_TO_RAD = (pi/180)
-
-# Our overall data representation; each object has related information 
-# We fill the publishers in __init__
-objects = {
-    "cutie": { # Old game object used for testing
-        "pose": None, 
-        "publisher" : None
-    },
-    "TommyGun": { # Tommygun game object.
-        "pose":None,
-        "publisher": None
-    },
-    "gman": { # GMan game object.
-        "pose":None,
-        "publisher": None
-    },
-    "bootlegger": { # Bootlegger game object.
-        "pose":None,
-        "publisher": None
-    },
-    "badge": { # Badge game object.
-        "pose":None,
-        "publisher": None
-    },
-    "gate": { #not in use...
-        "pose": None,
-        "publisher" : None
-    },
-    "BinBarrel":{
-        "pose" : None,
-        "publisher" : None
-    },
-    "BinPhone":{
-        "pose" : None,
-        "publisher" : None
-    },
-    "axe":{
-        "pose" : None,
-        "publisher" : None
-    },
-    "torpedoGman":{
-        "pose" : None,
-        "publisher" : None
-    },
-    "torpedoBootlegger" : {
-        "pose" : None,
-        "publiher" : None
-    },
-    "cash":{
-        "pose" : None,
-        "publisher" : None
-    }
-}
 
 #Used to translate between DOPE ids and names of objects
 object_ids = {
@@ -82,6 +30,46 @@ object_ids = {
     9 : "cash"
 }
 
+objects = {}
+for key in object_ids.values():
+    objects[key] = {
+        "pose" : None,
+        "publisher" : None
+    }
+    
+
+def rotateAboutYaw(pt: Vector3, angle) -> Vector3:
+    x = pt.x * cos(angle) - pt.y * sin(angle)
+    y = pt.x * sin(angle) + pt.y * cos(angle)
+    
+    res = Vector3()
+    res.x = x
+    res.y = y
+    res.z = pt.z
+    
+    return res
+
+#basically this method should be the exact python version of doTransform() in util.cpp but without transforming the quaternion and returning a pose
+def doTransform(coords: Vector3, transform: TransformStamped) -> Vector3:
+    #rotate point with transform orientation
+    rpy = euler_from_quaternion([
+        transform.transform.rotation.x,
+        transform.transform.rotation.y,
+        transform.transform.rotation.z,
+        transform.transform.rotation.w
+    ])
+    
+    yaw = rpy[2]
+    relative = rotateAboutYaw(coords, yaw)
+    
+    position = Vector3()
+    position.x = relative.x + transform.transform.translation.x
+    position.y = relative.y + transform.transform.translation.y
+    position.z = relative.z + transform.transform.translation.z
+    
+    return position
+
+
 class MappingNode(Node):
 
     def __init__(self):
@@ -91,7 +79,9 @@ class MappingNode(Node):
         self.tf_buffer = tf2_ros.buffer.Buffer()
         self.tl = tf2_ros.TransformListener(self.tf_buffer, self)
         self.worldFrame = "world"
-        self.cameraFrame = "{}/stereo/left_optical".format(self.get_namespace())
+        
+        ## TODO CHANGE THIS TO WORK PROPERLY
+        self.cameraFrame = "tempest/stereo/left_optical"
         self.tf_brod = tf2_ros.transform_broadcaster.TransformBroadcaster(self)
         self.config = {}
 
@@ -127,10 +117,10 @@ class MappingNode(Node):
 
         # Creating publishers
         for field in objects:
-            objects[field]["publisher"] = self.create_publisher(PoseWithCovarianceStamped, "{}/mapping/{}".format(self.get_namespace(), field), qos_profile_system_default)
+            objects[field]["publisher"] = self.create_publisher(PoseWithCovarianceStamped, "mapping/{}".format(field), qos_profile_system_default)
 
         # Subscribers
-        self.create_subscription(Detection3DArray, "{}/yolo/detected_objects".format(self.get_namespace()), self.dopeCallback, qos_profile_system_default) # DOPE's information 
+        self.create_subscription(Detection3DArray, "detected_objects".format(self.get_namespace()), self.dopeCallback, qos_profile_system_default) # DOPE's information 
 
         # Timers
         self.publishTimer = self.create_timer(0.5, self.pubEstim) # publish the inital estimate
@@ -233,11 +223,14 @@ class MappingNode(Node):
         # `detection` is of type Detection3D (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
         for detection in msg.detections:
 
-            now = msg.header.stamp.sec
+            self.get_logger().info(f"Detection Pose: {detection.results[0].pose.pose}")
+
+            now = Time(seconds=msg.header.stamp.sec, nanoseconds=msg.header.stamp.nanosec)
+            
             try:
                 trans = self.tf_buffer.lookup_transform(
-                    self.cameraFrame,
                     self.worldFrame,
+                    self.cameraFrame,
                     now)
             except TransformException as ex:
                 self.get_logger().error(f'Could not transform {self.cameraFrame} to {self.worldFrame}: {ex}')
@@ -250,32 +243,38 @@ class MappingNode(Node):
                 # Translate the ID that DOPE gives us to a name meaningful to us
                 #name = object_ids[result.id] - ros 1
                 name = result.hypothesis.class_id 
+                
+                if objects[name]["pose"] is None:
+                    continue
 
                 # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
                 # We need to convert that to the world frame, which is what is used in our mapping system 
                 # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
-                # Transform the pose part 
-                p1 = PoseStamped()
-                p1.header.frame_id = self.cameraFrame
-                p1.header.stamp = now
-                p1.pose = result.pose.pose
+                # Transform the pose part               
+                transform = self.tf_buffer.lookup_transform(
+                    self.worldFrame,
+                    self.cameraFrame,
+                    now
+                )
 
-                convertedPos = self.tf_buffer.transform(p1, self.worldFrame)
+                convertedVect = doTransform(result.pose.pose.position, transform)                
 
                 # Get the reading in the world frame message all together
                 reading_world_frame = PoseWithCovarianceStamped()
-                reading_world_frame.header.stamp = now
+                reading_world_frame.header.stamp = msg.header.stamp
                 reading_world_frame.header.frame_id = self.worldFrame
-                reading_world_frame.pose.pose = copy.deepcopy(convertedPos.pose)
+                reading_world_frame.pose.pose.position.x = convertedVect.x
+                reading_world_frame.pose.pose.position.y = convertedVect.y
+                reading_world_frame.pose.pose.position.z = convertedVect.z                
 
                 # We do some error/reasonability checking with this
                 reading_camera_frame = PoseWithCovarianceStamped()
                 reading_camera_frame.header.frame_id = self.cameraFrame
-                reading_camera_frame.header.stamp = now 
+                reading_camera_frame.header.stamp = msg.header.stamp
                 reading_camera_frame.pose = result.pose
 
                 # Merge the given position into our position for that object
-                objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.score)
+                objects[name]["pose"].addPositionEstimate(reading_world_frame, reading_camera_frame, result.hypothesis.score, now)
 
 
     # Load the object's information from data
