@@ -47,11 +47,11 @@ class Estimate:
         
         # Reject detections that are too far away from the systems current estimate.
         if abs(msg.pose.pose.position.x - self.pos[0]) >= (sqrt(self.covariance[0]) * self.stdev_cutoff):
-            return (False, "Rejecting due to being unlikely (x-direction): {x}".format(x = msg.pose.pose.position.x))
+            return (False, f"Rejecting due to being unlikely (x-direction): Mismatch by {msg.pose.pose.position.x - self.pos[0]}")
         if abs(msg.pose.pose.position.y - self.pos[1]) >= (sqrt(self.covariance[1]) * self.stdev_cutoff):
-            return (False, "Rejecting due to being unlikely (y-direction): {y}".format(y = msg.pose.pose.position.y))
+            return (False, f"Rejecting due to being unlikely (y-direction): Mismatch by {msg.pose.pose.position.y - self.pos[1]}")
         if abs(msg.pose.pose.position.z - self.pos[2]) >= (sqrt(self.covariance[2]) * self.stdev_cutoff):
-            return (False, "Rejecting due to being unlikely (z-direction): {z}".format(z = msg.pose.pose.position.z))
+            return (False, f"Rejecting due to being unlikely (z-direction). Mismatch by {msg.pose.pose.position.z - self.pos[2]}")
 
         # Yaw check.
         msg_quat = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z]
