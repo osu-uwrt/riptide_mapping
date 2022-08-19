@@ -112,7 +112,8 @@ class MappingNode(Node):
                 newTf.transform.translation = Vector3(x=output_pose.pose.pose.position.x, 
                     y=output_pose.pose.pose.position.y, z=output_pose.pose.pose.position.z)
                 newTf.transform.rotation = output_pose.pose.pose.orientation
-                newTf.header.stamp = output_pose.header.stamp
+                # newTf.header.stamp = output_pose.header.stamp
+                newTf.header.stamp = self.get_clock().now().to_msg()
                 newTf.child_frame_id = objectName + "_frame"
                 newTf.header.frame_id = "world"
                 self.tf_brod.sendTransform(newTf)
