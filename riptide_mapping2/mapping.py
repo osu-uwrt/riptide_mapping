@@ -50,7 +50,7 @@ class MappingNode(Node):
         self.worldFrame = "world"
         
         ## TODO CHANGE THIS TO WORK PROPERLY
-        self.cameraFrame = "tempest/stereo/left_optical"
+        self.cameraFrame = "tempest/stereo/left_link"
         self.tf_brod = tf2_ros.transform_broadcaster.TransformBroadcaster(self)
         self.config = {}
 
@@ -175,7 +175,7 @@ class MappingNode(Node):
 
         # update config and mark for re-estimation
         for param in params:
-            print(param.name, param.value)
+            # print(param.name, param.value)
             self.config[param.name] = param.value
             for objectName in objects: 
                 if(objectName in param.name):
