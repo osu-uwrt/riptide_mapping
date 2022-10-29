@@ -34,5 +34,27 @@ def generate_launch_description():
             parameters = [
                 config
             ]
-        )
+        ),
+
+        Node(
+        package="chameleon_tf",
+        executable="chameleon_tf",
+        name="world_to_map",
+        output="screen",
+        respawn=True,
+        parameters=[
+            {"source_frame": "world"},
+            {"target_frame": "map"},
+            {"initial_translation": [
+                0.0,
+                0.0,
+                0.0
+            ]},
+            {"initial_rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]},
+        ]
+    )
     ])
