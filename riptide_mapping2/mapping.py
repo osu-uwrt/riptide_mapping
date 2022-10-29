@@ -48,7 +48,7 @@ class MappingNode(Node):
         self.tf_buffer = tf2_ros.buffer.Buffer()
         self.tl = tf2_ros.TransformListener(self.tf_buffer, self)
         self.tf_buffer.transform
-        self.mapFrame = "world"
+        self.mapFrame = "map"
         
         ## TODO CHANGE THIS TO WORK PROPERLY
         self.tf_brod = tf2_ros.transform_broadcaster.TransformBroadcaster(self)
@@ -240,11 +240,13 @@ class MappingNode(Node):
                     self.get_logger().warning(f"Rejected {name}: relative angle {rpy[2]} outside {angleMax}")
                     continue
 
+                # theshold the confidence of the detection is above the min
                 min = self.config["confidence_cutoff"]
                 if(result.hypothesis.score <  min):
                     self.get_logger().warning(f"Rejected {name}: confidence {result.hypothesis.score} below {min}")
                     continue
 
+                # transform camera pose into map frame
                 convertedPose = do_transform_pose_stamped(pose, trans)               
 
                 # Get the reading in the world frame message all together
