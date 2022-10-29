@@ -220,7 +220,7 @@ class MappingNode(Node):
                 # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
                 # Transform the pose part 
                 pose = PoseStamped()
-                pose.header.frame_id = self.cameraFrame
+                pose.header.frame_id = detection.header.frame_id
                 pose.header.stamp = msg.header.stamp
                 pose.pose = result.pose.pose           
 
@@ -232,16 +232,8 @@ class MappingNode(Node):
                 reading_map_frame.header.frame_id = self.mapFrame
                 reading_map_frame.pose.pose = convertedPose.pose          
 
-                # We do some error/reasonability checking with this
-                reading_camera_frame = PoseWithCovarianceStamped()
-                reading_camera_frame.header.frame_id = self.cameraFrame
-                reading_camera_frame.header.stamp = msg.header.stamp
-                reading_camera_frame.pose = result.pose
-                
-                # self.get_logger().info(f"Transformed Pose: {convertedPose}")
-
                 # Merge the given position into our position for that object
-                valid, errStr = objects[name]["pose"].addPositionEstimate(reading_map_frame)
+                valid, errStr = objects[name]["pose"].addPosEstim(reading_map_frame)
                 if(not valid):
                     self.get_logger().warning(f"detected {name}: {errStr}")
 
