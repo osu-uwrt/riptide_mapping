@@ -1,9 +1,8 @@
-import launch
-import launch.actions
-from ament_index_python.packages import get_package_share_directory
-import launch_ros.actions
 import os
+import launch
+from ament_index_python.packages import get_package_share_directory
 from launch.actions import DeclareLaunchArgument
+from launch_ros.actions import Node, PushRosNamespace
 
 def generate_launch_description():
     # declare the launch args to read for this file
@@ -14,14 +13,17 @@ def generate_launch_description():
         )
 
     return launch.LaunchDescription([
+
         DeclareLaunchArgument(
             "log_level", 
             default_value="INFO",
             description="log level to use",
         ),
 
+        PushRosNamespace('tempest'),
+
         # create the nodes    
-        launch_ros.actions.Node(
+        Node(
             package='riptide_mapping2',
             executable='mapping',
             name='riptide_mapping2',

@@ -29,6 +29,6 @@ setup(
         ],
     },
     py_modules=[
-        'riptide_mapping2.Estimate'
+        'riptide_mapping2.estimate'
     ]
 )
