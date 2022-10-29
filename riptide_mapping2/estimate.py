@@ -17,13 +17,13 @@ class KalmanEstimate:
     # Takes in a new estimate in the map frame and attempts to add it to the current estimate
     def addPosEstim(self, poseWithCov: PoseWithCovarianceStamped) -> Tuple[bool, str]:
         # find the eigienvals of the last pose
-        lastCovDist = self.covarDist(self.lastPose)
+        lastCovDist = covarDist(self.lastPose)
 
         # look at the data compared to the world
         eucDist = self.poseDist(poseWithCov, self.lastPose)
 
-        posDiffEucNorm = self.euclideanDist(eucDist[0:2])
-        posCovEucNorm = self.euclideanDist(lastCovDist[0:2])
+        posDiffEucNorm = euclideanDist(eucDist[0:2])
+        posCovEucNorm = euclideanDist(lastCovDist[0:2])
 
         # compare the euclidean position distance to the covariance
         # also compare the rpy distance
@@ -54,21 +54,6 @@ class KalmanEstimate:
     def getPoseEstim(self) -> PoseWithCovarianceStamped:
         return self.lastPose
 
-    # get the covariance eigenvalues for the last pose
-    def covarDist(self, poseWithCov: PoseWithCovarianceStamped) -> np.ndarray:
-        # convert ROS message to numpy array
-        covArr = np.array(poseWithCov.pose.covariance)
-
-        # make the array 6x6
-        covArr = covArr.reshape((6,6))
-
-        # square root the matrix to compute the distance
-        sqtrMat = np.sqrt(covArr)
-
-        # compute and return the eigenvalues
-        eigenVals = np.linalg.eigvals(sqtrMat)
-        return eigenVals
-
     # returns a 6x1 vector containing the distance
     def poseDist(self, pose1: PoseWithCovarianceStamped, pose2: PoseWithCovarianceStamped) -> np.ndarray:
         # compute euler distance
@@ -92,10 +77,6 @@ class KalmanEstimate:
         yawDist = abs(pose1RPY[2] - pose2RPY[2])
 
         return np.array([xDist, yDist, zDist, rollDist, pitchDist, yawDist])
-
-    def euclideanDist(self, vect: np.ndarray) -> float:
-        sumSq = np.dot(vect.T, vect)
-        return np.sqrt(sumSq)
 
     # compute a fused pose based on the covariance of the position vector as well
     # as the orientation in RPY format
@@ -146,15 +127,34 @@ class KalmanEstimate:
 
         return newPose
 
-    # Reconciles two estimates, each with a given estimated value and covariance
-    # From https://ccrma.stanford.edu/~jos/sasp/Product_Two_Gaussian_PDFs.html,
-    # Where estimate #1 is our current estimate and estimate #2 is the reading we just got in. 
-    def updateValue(self, val1, val2, cov1, cov2):
-        new_mean = (val1 * cov2 + val2 * cov1) / (cov1 + cov2)
-        new_cov = (cov1 * cov2) / (cov1 + cov2)
+# Compute the size of the covariance elipsoids of a poseWithCovarainceStamped
+# takes the eigenvalues of the cov matrix and euclidean norms them to get the 
+# elipsoidal radius terms
+def covarDist(poseWithCov: PoseWithCovarianceStamped) -> np.ndarray:
+    # convert ROS message to numpy array
+    covArr = np.array(poseWithCov.pose.covariance)
 
-        # Ensure that covariance does not drop below the covariance threshold.
-        if(new_cov < self.cov_limit):
-            new_cov = self.cov_limit
+    # make the array 6x6
+    covArr = covArr.reshape((6,6))
 
-        return (new_mean, new_cov)
+    # square root the matrix to compute the distance
+    sqtrMat = np.sqrt(covArr)
+
+    # compute and return the eigenvalues
+    eigenVals = np.linalg.eigvals(sqtrMat)
+    return eigenVals
+
+# Compute the euclidean norm of a vector. 
+# Vector is assumed to be 3x1, but will work for higher dims
+def euclideanDist(vect: np.ndarray) -> float:
+        sumSq = np.dot(vect.T, vect)
+        return np.sqrt(sumSq)
+
+# Reconciles two estimates, each with a given estimated value and covariance
+# From https://ccrma.stanford.edu/~jos/sasp/Product_Two_Gaussian_PDFs.html,
+# Where estimate #1 is our current estimate and estimate #2 is the reading we just got in. 
+def updateValue(self, val1, val2, cov1, cov2):
+    new_mean = (val1 * cov2 + val2 * cov1) / (cov1 + cov2)
+    new_cov = (cov1 * cov2) / (cov1 + cov2)
+
+    return (new_mean, new_cov)

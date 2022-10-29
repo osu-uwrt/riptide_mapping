@@ -3,15 +3,18 @@ import rclpy
 from rclpy.node import Node
 from rclpy.time import Time
 from rclpy.qos import qos_profile_system_default # can replace this with others
+
 from rcl_interfaces.msg import SetParametersResult
-import tf2_ros
-from tf2_ros import TransformException
-from vision_msgs.msg import Detection3DArray, Detection3D
+from vision_msgs.msg import Detection3DArray, Detection3D, ObjectHypothesisWithPose
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, TransformStamped, Vector3
-from riptide_mapping2.estimate import KalmanEstimate
-from math import pi
+
+from riptide_mapping2.estimate import KalmanEstimate, euclideanDist
 from tf2_geometry_msgs import do_transform_pose_stamped
-from tf_transformations import quaternion_from_euler
+from tf_transformations import quaternion_from_euler, euler_from_quaternion
+from tf2_ros import TransformException
+import tf2_ros
+import numpy as np
+from math import pi
 
 DEG_TO_RAD = (pi/180)
 
@@ -55,10 +58,12 @@ class MappingNode(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('stdev_cutoff', 1.0),
-                ('angle_cutoff', 1.0),
+                # Covariance parameters for merging stats
                 ('cov_limit', 1.0),
                 ('k_value', 0.1),
+
+                # filtering parameters in camera frame
+                ('angle_cutoff', pi),
                 ('distance_limit', 10.0),
                 ('confidence_cutoff', .7)
             ])
@@ -190,9 +195,6 @@ class MappingNode(Node):
         # Context: This loop will run <number of different objects DOPE thinks it sees on screen> times
         # `detection` is of type Detection3D (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/Detection3D.html)
         for detection in msg.detections:
-
-            # self.get_logger().info(f"Detection Pose: {detection.results[0].pose.pose}")
-
             now = Time(seconds=msg.header.stamp.sec, nanoseconds=msg.header.stamp.nanosec)
             
             try:
@@ -208,21 +210,40 @@ class MappingNode(Node):
             # Context: This loop will run <number of objects DOPE can identify> times 
             # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
             for result in detection.results: 
-                # Translate the ID that DOPE gives us to a name meaningful to us
-                #name = object_ids[result.id] - ros 1
+                result = ObjectHypothesisWithPose()
                 name = result.hypothesis.class_id 
                 
                 if objects[name]["pose"] is None:
+                    self.get_logger().warning(f"Rejected {name}: unknown class id")
                     continue
 
                 # DOPE's frame is the same as the camera frame, specifically the left lens of the camera.
-                # We need to convert that to the world frame, which is what is used in our mapping system 
+                # We need to convert that to the map frame, which is what is used in our mapping system 
                 # Tutorial on how this works @ http://wiki.ros.org/tf/TfUsingPython#TransformerROS_and_TransformListener
                 # Transform the pose part 
                 pose = PoseStamped()
                 pose.header.frame_id = detection.header.frame_id
                 pose.header.stamp = msg.header.stamp
-                pose.pose = result.pose.pose           
+                pose.pose = result.pose.pose   
+
+                # check the distance limits we have on the detection frame
+                distance = euclideanDist(np.array([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]))
+                if(distance < self.config["distance_limit"]):
+                    self.get_logger().warning(f"Rejected {name}: distance {distance}m outside limit")
+                    continue
+
+                # check the angular difference between the robot and vision detection
+                angleMax = self.config["angle_cutoff"]
+                rpy = euler_from_quaternion([pose.pose.orientation.w, pose.pose.orientation.x,
+                                             pose.pose.orientation.y, pose.pose.orientation.z])
+                if(abs(rpy[2]) > angleMax):
+                    self.get_logger().warning(f"Rejected {name}: relative angle {rpy[2]} outside {angleMax}")
+                    continue
+
+                min = self.config["confidence_cutoff"]
+                if(result.hypothesis.score <  min):
+                    self.get_logger().warning(f"Rejected {name}: confidence {result.hypothesis.score} below {min}")
+                    continue
 
                 convertedPose = do_transform_pose_stamped(pose, trans)               
 
@@ -235,15 +256,11 @@ class MappingNode(Node):
                 # Merge the given position into our position for that object
                 valid, errStr = objects[name]["pose"].addPosEstim(reading_map_frame)
                 if(not valid):
-                    self.get_logger().warning(f"detected {name}: {errStr}")
+                    self.get_logger().warning(f"Rejected {name}: {errStr}")
 
 def main(args=None):
     rclpy.init(args=args)
-
-    node = MappingNode()
-
-    rclpy.spin(node)
-
+    rclpy.spin(MappingNode())
     rclpy.shutdown()
 
 if __name__ == '__main__':
