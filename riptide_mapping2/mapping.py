@@ -14,6 +14,7 @@ from riptide_mapping2.Estimate import Estimate
 from tf_transformations import euler_from_quaternion
 from math import pi, sin, cos
 from tf2_geometry_msgs import do_transform_pose_stamped
+from tf_transformations import quaternion_inverse
 
 DEG_TO_RAD = (pi/180)
 
@@ -226,6 +227,9 @@ class MappingNode(Node):
                 pose.header.stamp = msg.header.stamp
                 pose.pose = result.pose.pose           
 
+                #Inverse quaternion
+                pose.pose.orientation = quaternion_inverse(pose.pose.orientation)
+                
                 convertedPose = do_transform_pose_stamped(pose, trans)               
 
                 # Get the reading in the world frame message all together
