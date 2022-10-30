@@ -12,6 +12,7 @@ from vision_msgs.msg import Detection3DArray
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, TransformStamped, Vector3
 from riptide_mapping2.Estimate import Estimate
 from math import pi
+from tf_transformations import quaternion_inverse
 
 DEG_TO_RAD = (pi/180)
 
@@ -99,10 +100,10 @@ class MappingNode(Node):
 
         # Creating publishers
         for field in objects:
-            objects[field]["publisher"] = self.create_publisher(PoseWithCovarianceStamped, "{}/mapping/{}".format(self.get_namespace(), field), qos_profile_system_default)
+            objects[field]["publisher"] = self.create_publisher(PoseWithCovarianceStamped, "mapping/{}".format(field), qos_profile_system_default)
 
         # Subscribers
-        self.create_subscription(Detection3DArray, "{}/dope/detected_objects".format(self.get_namespace()), self.dopeCallback, qos_profile_system_default) # DOPE's information 
+        self.create_subscription(Detection3DArray, "dope/detected_objects", self.dopeCallback, qos_profile_system_default) # DOPE's information 
 
         # Timers
         self.publishTimer = self.create_timer(0.5, self.pubEstim) # publish the inital estimate
@@ -230,6 +231,9 @@ class MappingNode(Node):
                 p1.header.frame_id = self.cameraFrame
                 p1.header.stamp = now
                 p1.pose = result.pose.pose
+
+                #Invert quaternion so x-axis faces camera
+                p1.pose.orientation = quaternion_inverse(p1.pose.orientation)
 
                 convertedPos = self.tf_buffer.transform(p1, self.worldFrame)
 
