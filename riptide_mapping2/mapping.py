@@ -29,7 +29,8 @@ object_ids = {
     6 : "badge",
     7 : "torpedoBootlegger",
     8 : "bootlegger",
-    9 : "cash"
+    9 : "cash",
+    10: "gate"
 }
 
 objects = {}
@@ -210,7 +211,6 @@ class MappingNode(Node):
             # Context: This loop will run <number of objects DOPE can identify> times 
             # `result` is of type ObjectHypothesisWithPose (http://docs.ros.org/en/lunar/api/vision_msgs/html/msg/ObjectHypothesisWithPose.html)
             for result in detection.results: 
-                result = ObjectHypothesisWithPose()
                 name = result.hypothesis.class_id 
                 
                 if objects[name]["pose"] is None:
@@ -228,8 +228,9 @@ class MappingNode(Node):
 
                 # check the distance limits we have on the detection frame
                 distance = euclideanDist(np.array([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]))
-                if(distance < self.config["distance_limit"]):
-                    self.get_logger().warning(f"Rejected {name}: distance {distance}m outside limit")
+                dist_lim = self.config["distance_limit"]
+                if(distance > dist_lim):
+                    self.get_logger().warning(f"Rejected {name}: distance {distance}m outside limit of {dist_lim}")
                     continue
 
                 # check the angular difference between the robot and vision detection
@@ -259,6 +260,22 @@ class MappingNode(Node):
                 valid, errStr = objects[name]["pose"].addPosEstim(reading_map_frame)
                 if(not valid):
                     self.get_logger().warning(f"Rejected {name}: {errStr}")
+
+        # Get the initial and current position of gman and bootlegger for comparison
+
+        # TODO need to check that they exist in the config dict
+
+        # gman_init_position = Vector3(self.config["init_data.gman.pose.x"], self.config["init_data.gman.pose.y"], self.config["init_data.gman.pose.z"])
+        # gman_pose = objects["gman"]["pose"].getPoseEstim()
+        # gman_current_position = Vector3(gman_pose.pose.pose.x, gman_pose.pose.pose.y, gman_pose.pose.pose.z)
+        # bootlegger_init_position = Vector3(self.config["init_data.bootlegger.pose.x"], self.config["init_data.bootlegger.pose.y"], self.config["init_data.bootlegger.pose.z"])
+        # bootlegger_pose = objects["bootlegger"]["pose"].getPoseEstim()
+        # bootlegger_current_position = Vector3(bootlegger_pose.pose.pose.x, bootlegger_pose.pose.pose.y, bootlegger_pose.pose.pose.z)
+        
+        # Check that gman and bootlegger have both been updated from their initialized position
+        # if(gman_init_position != gman_current_position and bootlegger_init_position != bootlegger_current_position):
+        
+            
 
 def main(args=None):
     rclpy.init(args=args)

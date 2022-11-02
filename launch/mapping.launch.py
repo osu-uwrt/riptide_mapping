@@ -20,8 +20,6 @@ def generate_launch_description():
             description="log level to use",
         ),
 
-        PushRosNamespace('tempest'),
-
         # create the nodes    
         Node(
             package='riptide_mapping2',
